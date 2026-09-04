@@ -134,3 +134,38 @@ test('phone: diagram tabs, share link and files still work', async ({ page, cont
   await page.getByTestId('menu-file').click()
   await expect(page.getByTestId('file-save-as')).toBeVisible()
 })
+
+test('phone: a live-session guest keeps a single-row toolbar and menus stay on screen', async ({
+  page,
+  context,
+}) => {
+  await page.goto('/')
+  await page.getByTestId('menu-share').click()
+  await page.getByTestId('share-live').click()
+  await page.getByTestId('live-name').fill('vivedo')
+  await page
+    .getByTestId('live-title')
+    .fill('things random')
+    .catch(() => {})
+  await page.getByTestId('live-start').click()
+  await expect(page.getByTestId('live-status')).toContainText('Sharing')
+  await page.getByTestId('live-title').fill('things random')
+  const link = (await page.getByTestId('live-link').textContent())!.trim()
+  await page.keyboard.press('Escape')
+
+  const guest = await context.newPage()
+  await guest.goto(link)
+  await expect(guest.getByTestId('shared-badge')).toBeVisible()
+  const bar = (await guest.getByTestId('mobile-toolbar').boundingBox())!
+  expect(bar.height).toBeLessThan(56)
+  const vw = guest.viewportSize()!.width
+  for (const id of ['mobile-more', 'menu-share']) {
+    await guest.getByTestId(id).click()
+    const menu = guest.locator('.menu-list').last()
+    await expect(menu).toBeVisible()
+    const box = (await menu.boundingBox())!
+    expect(box.x).toBeGreaterThanOrEqual(0)
+    expect(box.x + box.width).toBeLessThanOrEqual(vw + 1)
+    await guest.keyboard.press('Escape')
+  }
+})

@@ -6,9 +6,45 @@
   }
 
   .mobile-toolbar {
-    flex-wrap: nowrap;
+    /* The desktop toolbar rule allows wrapping; on a phone everything must stay on one row. */
+    flex-wrap: nowrap !important;
     gap: 2px;
     padding: 6px 8px;
+    min-width: 0;
+  }
+
+  .mobile-toolbar > * {
+    flex: none;
+  }
+
+  /* The title (file menu or session title) is the only thing allowed to shrink. */
+  .mobile-toolbar > .menu:first-of-type,
+  .mobile-toolbar > .mobile-title {
+    flex: 1 1 auto;
+    min-width: 32px;
+    overflow: hidden;
+  }
+
+  .mobile-toolbar > .menu:first-of-type > button {
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .mobile-badge-name {
+    display: none;
+  }
+
+  .mobile-toolbar .live-strip .ai-muted,
+  .mobile-toolbar .live-strip .live-swatch {
+    display: none;
+  }
+
+  .mobile-toolbar .live-strip {
+    padding: 4px 6px;
+  }
+
+  .mobile-toolbar .toolbar-spacer {
+    flex: 0 1 8px;
   }
 
   .mobile-toolbar .brand-mark {

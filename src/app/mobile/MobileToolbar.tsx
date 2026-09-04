@@ -68,8 +68,13 @@ export function MobileToolbar({
       {isGuest ? (
         <div className="mobile-title" data-testid="toolbar-title">
           {liveTitle}
-          <span className="shared-badge" data-testid="shared-badge">
-            <Icon name="users" size={11} /> {hostName ?? 'host'}
+          <span
+            className="shared-badge"
+            data-testid="shared-badge"
+            title={`Shared by ${hostName ?? 'host'}`}
+          >
+            <Icon name="users" size={11} />
+            <span className="mobile-badge-name">{hostName ?? 'host'}</span>
           </span>
         </div>
       ) : (

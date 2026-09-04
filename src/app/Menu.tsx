@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { Icon, type IconName } from '../shared/Icon'
 
 interface MenuProps {
@@ -16,7 +16,23 @@ interface MenuProps {
 export function Menu({ label, icon, align = 'left', title, children, testId, onOpen }: MenuProps) {
   const [open, setOpen] = useState(false)
   const root = useRef<HTMLDivElement>(null)
+  const list = useRef<HTMLUListElement>(null)
+  const [shift, setShift] = useState(0)
   const id = useId()
+
+  // Keep the dropdown inside the viewport: a right-aligned menu opened from a button near the
+  // left edge (or vice versa) would otherwise hang off-screen. Only matters on narrow screens.
+  useLayoutEffect(() => {
+    if (!open || !list.current) return
+    setShift(0)
+    const rect = list.current.getBoundingClientRect()
+    const margin = 8
+    const vw = window.innerWidth
+    let dx = 0
+    if (rect.left < margin) dx = margin - rect.left
+    else if (rect.right > vw - margin) dx = vw - margin - rect.right
+    if (dx !== 0) setShift(dx)
+  }, [open])
 
   useEffect(() => {
     if (!open) return
@@ -52,7 +68,13 @@ export function Menu({ label, icon, align = 'left', title, children, testId, onO
         <Icon name="chevron" size={12} />
       </button>
       {open && (
-        <ul className={`menu-list${align === 'right' ? ' align-right' : ''}`} role="menu" id={id}>
+        <ul
+          ref={list}
+          className={`menu-list${align === 'right' ? ' align-right' : ''}`}
+          role="menu"
+          id={id}
+          style={shift ? { transform: `translateX(${shift}px)` } : undefined}
+        >
           {children(() => setOpen(false))}
         </ul>
       )}
