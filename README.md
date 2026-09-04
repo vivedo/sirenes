@@ -1,81 +1,98 @@
-# Sirenes
+<p align="center">
+  <img src="public/favicon.svg" width="72" height="72" alt="">
+</p>
 
-Live [Mermaid](https://mermaid.js.org/) diagrams in the browser. Type on the left, see the diagram on the right, share it as a link. No backend: the only services Sirenes talks to are Google Drive and OpenRouter, both directly from your browser with your own credentials.
+<h1 align="center">Sirenes</h1>
+
+<p align="center">
+  Live Mermaid diagrams in your browser. Nothing to install, nothing uploaded.<br>
+  <a href="https://sirenes.vivedo.me/"><strong>sirenes.vivedo.me</strong></a>
+</p>
+
+<p align="center">
+  <img src="docs/images/editor.png" alt="Sirenes editing a flowchart: Mermaid source on the left, rendered diagram on the right, two diagram tabs above" width="900">
+</p>
+
+Type Mermaid on the left and watch the diagram redraw on the right. Save to your disk or your Google Drive, share a diagram as a link, edit it with an AI assistant, or work on it live with other people, browser to browser. Sirenes is a static site with no backend of its own: the only services it ever talks to are the ones you connect, with your own credentials.
 
 _Sirenes_ is the Latin plural of _siren_, the mermaid of classical myth.
 
-## Status
-
-Version 1.0.0. All planned phases are implemented and covered by tests. See [CHANGELOG.md](CHANGELOG.md), [docs/PRD.md](docs/PRD.md) for requirements and [docs/TASKS.md](docs/TASKS.md) for the backlog and what was left out.
-
-| Area                                    | State                                                              |
-| --------------------------------------- | ------------------------------------------------------------------ |
-| Editor and live preview                 | Done                                                               |
-| Beautiful themes and ASCII rendering    | Done                                                               |
-| Share via URL (mermaid.live compatible) | Done                                                               |
-| AI assistant via OpenRouter             | Done, verified against a mocked OpenRouter API                     |
-| Local file open and save                | Done                                                               |
-| Google Drive open and save              | Done, verified against a stubbed Google API; needs an OAuth client |
-| Privacy, clear data, offline awareness  | Done                                                               |
-
 ## Features
 
-### Editing
+### Editor
 
-- CodeMirror 6 editor with Mermaid syntax highlighting, inline error markers, search and undo history.
-- Live render with a 250 ms debounce. Syntax errors are shown on the offending line and the last good diagram stays on screen.
-- Pan and zoom with sharp vector redraws at any zoom level, fit to screen, reset.
-- Export to SVG and PNG (1x, 2x, 4x), copy SVG or source.
-- Editor-only, split and preview-only layouts. Light and dark UI following your OS with a manual toggle.
-- Keyboard shortcuts for save, open, new, layouts, format, share link and the AI panel. Press `?` to list them.
+- Live preview with a 250 ms debounce. Syntax errors are marked on the offending line, and the last good diagram stays on screen until you fix them.
+- CodeMirror 6 editor with Mermaid highlighting, search, and undo history.
+- Pan and zoom, fit to screen, and vector-sharp redraws at any zoom level.
+- Export to SVG or PNG (1x, 2x, 4x), copy the SVG or the source.
+- Editor-only, split, and preview-only layouts. Light and dark interface following your system, with a manual toggle.
+- Keyboard shortcuts for everything common. Press `?` to list them.
 
 ### Themes and rendering
 
-- Two rendering engines behind one theme picker. Six curated [beautiful-mermaid](https://github.com/lukilabs/beautiful-mermaid) themes (zinc light/dark, GitHub light/dark, Catppuccin latte, Tokyo night) draw flowchart, sequence, class, state, ER and XY charts. The five classic Mermaid themes cover every diagram type.
-- Mermaid stays the parser for everything, so errors and line numbers are consistent. Diagram types beautiful-mermaid cannot draw fall back to Mermaid with a notice, and the beautiful options are disabled in the picker for them.
-- ASCII preview mode: see, copy or download the diagram as Unicode box-drawing or plain ASCII text.
-- The beautiful engine and its ELK layout dependency load lazily, only when used. Mermaid core loads on first render.
+- Two rendering engines behind one picker. Six [beautiful-mermaid](https://github.com/lukilabs/beautiful-mermaid) themes (Zinc light and dark, GitHub light and dark, Catppuccin latte, Tokyo night) draw flowcharts, sequence, class, state, ER and XY charts. The five classic Mermaid themes cover every diagram type, and Sirenes falls back to them automatically where needed.
+- ASCII mode renders the diagram as text, Unicode box drawing or plain characters, ready to paste into a terminal, a commit message, or a code comment.
 
-### Sharing
+### Several diagrams in one file
 
-- The diagram lives in the URL fragment as zlib-deflated base64url (`#pako:…`), the same format as mermaid.live, so links open in either tool. Beautiful themes travel in an extra field with a Mermaid fallback theme for mermaid.live.
-- Copy share link and copy view-only link (opens in preview-only mode). A warning appears past 8 000 characters and the fragment stops updating past 32 000.
-- Autosave to IndexedDB. If a link and your unsaved work disagree, you choose which to keep.
+- A `.mmd` file can hold many diagrams. Tabs across the top add, rename, switch and remove them.
+- On disk they are separated by a comment line Mermaid ignores:
 
-### AI assistant
+  ```
+  %% sirenes:diagram k7m2p9qx4b Login flow
+  flowchart TD
+      ...
+  %% sirenes:diagram 3nq8vtc2ha Payment
+  sequenceDiagram
+      ...
+  ```
 
-- Paste your own OpenRouter key. It is stored in this browser only, in localStorage or for the session, and sent only to openrouter.ai.
-- Pick any OpenRouter model, with search, favourites, context length and price per million tokens.
-- Ask for changes in plain language. Replies stream in and can be cancelled. The proposed diagram is parsed with Mermaid before it is offered, then reviewed as a side-by-side diff. Accept is a single undo step.
-- Presets: fix syntax, explain, simplify, tidy layout, convert to another diagram type. Token and cost usage per reply. Each diagram has its own conversation, which persists in the browser.
+  Every section is still a plain Mermaid diagram, so other tools can read the file. A file without separators is unchanged.
+
+- One file per browser tab. Each tab remembers its own file across reloads; "New file" opens a new tab.
+
+### Share as a link
+
+- The address bar always contains your diagram, compressed. Copy it and anyone can open it. No account, no server, no expiry.
+- Links use the same encoding as [mermaid.live](https://mermaid.live), so they open there too, and theirs open here.
+- View-only links open in preview mode.
 
 ### Files
 
-- Local files: open `.mmd`, `.mermaid`, `.txt` or `.md` from disk or by dragging them onto the window. In Chromium browsers Save writes back to the same file through the File System Access API; elsewhere Save downloads. Recent files list.
-- No browser pop-ups: Save as uses an in-app panel for the name and destination, and replacing unsaved work shows an Undo toast instead of a confirmation.
-- Markdown files round-trip: only the first ```mermaid block is edited, the rest of the file is written back byte for byte.
-- One `.mmd` file per browser tab, and as many browser tabs as you like: each tab remembers its own file across reloads. "New file" opens a new tab.
-- Several diagrams in one `.mmd` file: tabs across the top add, rename (click the active tab), switch and remove diagrams. On disk they are separated by a `%% sirenes:diagram <id> <name>` comment line that Mermaid ignores and the editor never shows, so every section is still a plain diagram. Files without separators are unchanged. Share links carry all diagrams; exports are named after the active one.
-- Google Drive: open with the Google Picker, save in place, or save a new file into a folder you choose with the Picker (the last folder is remembered). Sirenes asks for the `drive.file` scope only, so it can see just the files you pick or create with it. If a file changed on Drive since you opened it, you choose between overwriting and saving a copy. Drive's "Open with" links work. The access token stays in memory and is never stored.
+- **Local files.** Open `.mmd`, `.mermaid`, `.txt` or `.md` files, or drop them on the window. In Chromium browsers, Save writes back to the same file; elsewhere it downloads.
+- **Markdown.** Open a `.md` file and Sirenes edits its first `mermaid` block, leaving the rest of the file byte for byte as it was.
+- **Google Drive.** Open with the Google picker, save in place, or save a new file into a folder you choose. Sirenes asks for the `drive.file` scope only, so it can see just the files you pick or create with it. If a file changed on Drive since you opened it, you choose between overwriting and saving a copy. Drive's "Open with" links work.
+
+### AI assistant
+
+- Bring your own [OpenRouter](https://openrouter.ai) key. It is stored in this browser, in localStorage or for the session, and sent to nobody but OpenRouter.
+- Pick any OpenRouter model, with search, favourites, context length and price per million tokens.
+- Ask for changes in plain language. Replies stream in; the proposed diagram is parsed before it is offered, then shown as a side-by-side diff. Accept is a single undo step.
+- Presets: fix syntax, explain, simplify, tidy layout, convert to another diagram type. Token and cost usage per reply. Each diagram keeps its own conversation.
+
+<p align="center">
+  <img src="docs/images/editor-dark.png" alt="Dark interface with the Tokyo night theme and the AI assistant panel open" width="900">
+</p>
 
 ### Live collaboration
 
-- Share → Share live starts a peer-to-peer session and gives you a `#live:` link. Guests who open it edit the whole file with you in real time: every diagram is shared, people can work on different diagrams at once, guests can add and rename diagrams, and undo is per person and per diagram. Text merges through a CRDT (Yjs); WebRTC data channels are brokered by a PeerJS signalling server and carry the content encrypted end to end.
-- Only the diagram, its theme, a session title and presence are shared. Your files, Google Drive and AI key never enter the session. Guests see a "Shared by" badge instead of your file name and can only save their own copy; you remain the owner of the original.
-- The AI assistant becomes a shared chat, one per diagram: guests type requests, you run them on your key and model, and everyone sees the same conversation with author names. Guests can accept proposals if they may edit. A toggle next to "guests can edit" turns this off.
-- Host controls: session title, "guests can edit" and "guests can use my AI assistant" toggles, end session. Guests keep a local copy when the session ends. See [docs/COLLAB.md](docs/COLLAB.md) for self-hosting the signalling server and adding a TURN relay.
+- Share → Share live gives you a `#live:` link. People who open it edit the whole file with you in real time: every diagram is shared, participants can work on different diagrams at once, and undo is per person and per diagram.
+- Connections are WebRTC data channels straight between browsers, brokered by a PeerJS signalling server that never sees content. Text merges through a Yjs CRDT, so nobody's keystrokes are lost.
+- The host stays the owner. Guests see a session title instead of your file name and can only save their own copy. Your files, Drive and AI key never enter the session.
+- The AI assistant can be shared too, as one conversation per diagram: guests ask, you run it on your key, everyone sees the answer. Toggles for "guests can edit" and "guests can use my AI assistant" sit in the session panel.
+- Details, self-hosting the signalling server and adding a TURN relay: [docs/COLLAB.md](docs/COLLAB.md).
 
 ### Privacy
 
-- Plain, script-free [privacy policy](public/privacy.html) and [terms of service](public/terms.html) pages are served at `/privacy.html` and `/terms.html`, suitable for Google's OAuth branding review.
-- A privacy dialog (status bar link, or open `#privacy`) summarises what leaves the browser and to whom.
-- First-time visitors see a short welcome explaining the app in five lines. It is not shown to people arriving through a live-session link.
-- "Clear all data" removes the API key, autosave, AI history, recent files and settings, and revokes the Google token.
-- Offline: editing, sharing and local files keep working; Drive and AI controls are disabled with a notice.
+- No analytics, no cookies of our own, no third-party scripts beyond Google's sign-in and picker (loaded only when you use Drive).
+- Everything you make stays in your browser until you save or share it. A privacy dialog inside the app, and the full [privacy policy](https://sirenes.vivedo.me/privacy.html) and [terms](https://sirenes.vivedo.me/terms.html), spell out exactly what leaves the browser and to whom.
+- "Clear all data" removes everything Sirenes stored, including your key, and revokes the Google token.
 
-## Browser support
+## Using it
 
-Latest Chrome, Edge, Firefox and Safari. Save-in-place for local files needs the File System Access API (Chromium); other browsers fall back to downloads. Live collaboration needs WebRTC and a network path between participants; strict NATs may need a TURN server (see docs/COLLAB.md).
+Open [sirenes.vivedo.me](https://sirenes.vivedo.me/) and start typing. For Google Drive on your own deployment, see [docs/GOOGLE_SETUP.md](docs/GOOGLE_SETUP.md).
+
+Browser support: current Chrome, Edge, Firefox and Safari. Save-in-place for local files needs the File System Access API (Chromium); other browsers fall back to downloads. Live collaboration needs WebRTC and a network path between participants; strict NATs may need a TURN server.
 
 ## Development
 
@@ -83,22 +100,27 @@ Latest Chrome, Edge, Firefox and Safari. Save-in-place for local files needs the
 npm install
 npm run dev          # http://localhost:5173
 npm test             # unit tests (Vitest)
-npm run test:e2e     # Playwright end-to-end suite (first time: npx playwright install chromium)
+npm run test:e2e     # Playwright suite (first time: npx playwright install chromium)
 npm run lint         # oxlint + prettier --check
 npm run typecheck    # tsc -b
 npm run build        # static output in dist/
 ```
 
-The end-to-end suite stubs OpenRouter and Google entirely, so it runs without credentials. To use Google Drive in development, copy `.env.example` to `.env` and follow [docs/GOOGLE_SETUP.md](docs/GOOGLE_SETUP.md). Nothing is required for the editor, sharing, AI and local file features.
+The end-to-end suite stubs OpenRouter, Google and the peer transport, so it needs no credentials. Copy `.env.example` to `.env` to enable Google Drive locally.
+
+Stack: React 19, TypeScript, Vite, Zustand, CodeMirror 6, Mermaid 11, beautiful-mermaid, Yjs, PeerJS.
 
 ## Deploy
 
-The site is fully static. `.github/workflows/deploy.yml` builds and publishes `dist/` to GitHub Pages on every push to `main`:
+The site is fully static. `.github/workflows/deploy.yml` builds and publishes `dist/` to GitHub Pages on every push to `main`. Set **Pages → Source** to _GitHub Actions_, and for Google Drive add `VITE_GOOGLE_CLIENT_ID`, `VITE_GOOGLE_API_KEY` and `VITE_GOOGLE_APP_ID` as repository variables (they are public by design). The base path and public URL are derived from the Pages configuration at build time; after changing the custom domain, push a commit to rebuild.
 
-1. In the repository settings, set **Pages → Source** to _GitHub Actions_.
-2. For Google Drive, add `VITE_GOOGLE_CLIENT_ID`, `VITE_GOOGLE_API_KEY` and `VITE_GOOGLE_APP_ID` as repository **variables** (they are public by design). Add the Pages origin to the OAuth client's authorised origins.
-3. The workflow derives the base path and public URL from the Pages configuration, so project pages and custom domains both work without edits. The values are read at build time: after changing the custom domain in the Pages settings, push a commit or re-run the deploy workflow so the assets are rebuilt for the new root.
+## Documentation
 
-## Privacy
+- [Product requirements](docs/PRD.md) and the [task backlog](docs/TASKS.md)
+- [Live collaboration](docs/COLLAB.md)
+- [Google Drive setup](docs/GOOGLE_SETUP.md)
+- [Changelog](CHANGELOG.md)
 
-Diagram content is stored in your browser (IndexedDB and the URL) and nowhere else until you choose to save it to a file or to Drive. Anyone who has a share link can read the diagram in it. Details are in the in-app privacy dialog.
+## License
+
+[MIT](LICENSE) © 2026 vivedo
