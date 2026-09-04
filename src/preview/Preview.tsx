@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef } from 'react'
+import { useLayoutEffect, useRef } from 'react'
 import { useDocumentStore } from '../store/documentStore'
 import { useSettingsStore } from '../store/settingsStore'
 import { usePanZoom } from './usePanZoom'
@@ -35,8 +35,8 @@ export function Preview() {
     if (svgEl && svg) {
       const size = svgSize(svg)
       if (size) {
-        svgEl.setAttribute('width', String(size.width))
-        svgEl.setAttribute('height', String(size.height))
+        svgEl.dataset.width = String(size.width)
+        svgEl.dataset.height = String(size.height)
         svgEl.style.maxWidth = 'none'
       }
       const isNewDoc = lastDocId.current !== docId
@@ -48,13 +48,17 @@ export function Preview() {
     }
   }, [svg, docId, setContentSize, fit])
 
-  useEffect(() => {
-    const onResize = () => {
-      /* keep transform; user can hit fit */
-    }
-    window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
-  }, [])
+  // Zoom by resizing the SVG itself rather than CSS-scaling a rasterised layer, so the vector is
+  // redrawn crisp at every zoom level. The wrapper transform only pans.
+  useLayoutEffect(() => {
+    const svgEl = canvas.current?.querySelector('svg')
+    if (!svgEl) return
+    const w = Number(svgEl.dataset.width)
+    const h = Number(svgEl.dataset.height)
+    if (!w || !h) return
+    svgEl.setAttribute('width', String(w * transform.scale))
+    svgEl.setAttribute('height', String(h * transform.scale))
+  }, [svg, transform.scale])
 
   const empty = source.trim() === ''
   const asciiOk = empty || isBeautifulSupported(source)
@@ -129,7 +133,7 @@ export function Preview() {
           className="preview-canvas"
           ref={canvas}
           style={{
-            transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
+            transform: `translate(${transform.x}px, ${transform.y}px)`,
           }}
           aria-live="polite"
         />
