@@ -108,19 +108,6 @@ npm run build        # static output in dist/
 
 The end-to-end suite stubs OpenRouter, Google and the peer transport, so it needs no credentials. Copy `.env.example` to `.env` to enable Google Drive locally.
 
-Stack: React 19, TypeScript, Vite, Zustand, CodeMirror 6, Mermaid 11, beautiful-mermaid, Yjs, PeerJS.
-
-## Deploy
-
-The site is fully static. `.github/workflows/deploy.yml` builds and publishes `dist/` to GitHub Pages on every push to `main`. Set **Pages → Source** to _GitHub Actions_, and for Google Drive add `VITE_GOOGLE_CLIENT_ID`, `VITE_GOOGLE_API_KEY` and `VITE_GOOGLE_APP_ID` as repository variables (they are public by design). The base path and public URL are derived from the Pages configuration at build time; after changing the custom domain, push a commit to rebuild.
-
-## Documentation
-
-- [Product requirements](docs/PRD.md) and the [task backlog](docs/TASKS.md)
-- [Live collaboration](docs/COLLAB.md)
-- [Google Drive setup](docs/GOOGLE_SETUP.md)
-- [Changelog](CHANGELOG.md)
-
 ## License
 
-[MIT](LICENSE) © 2026 vivedo
+[MIT](LICENSE) © 2026 Edoardo Viviani
