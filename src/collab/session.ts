@@ -36,6 +36,14 @@ export interface SessionOptions {
   sessionId?: string
   canEdit?: boolean
   aiEnabled?: boolean
+  /**
+   * Host resume: the Y.Doc state saved before a reload. Restoring it keeps the same history as
+   * the guests still connected, so nothing gets duplicated when they re-sync. When present,
+   * `source` is ignored.
+   */
+  initialState?: Uint8Array | null
+  /** Guest reconnect cadence; tests shorten it. */
+  reconnectIntervalMs?: number
 }
 
 const PROTOCOL_VERSION = 1
@@ -154,11 +162,22 @@ export class CollabSession {
     })
 
     if (this.role === 'host') {
-      this.ydoc.transact(() => {
-        if (opts.source) this.ytext.insert(0, opts.source)
-        this.ymeta.set('theme', opts.theme ?? 'default')
-        this.ymeta.set('title', opts.title ?? 'Shared diagram')
-      }, this.ydoc.clientID)
+      if (opts.initialState && opts.initialState.length) {
+        Y.applyUpdate(this.ydoc, opts.initialState)
+        // Meta may have been set in the restored state; keep whatever it holds.
+        if (!this.ymeta.has('theme') || !this.ymeta.has('title')) {
+          this.ydoc.transact(() => {
+            if (!this.ymeta.has('theme')) this.ymeta.set('theme', opts.theme ?? 'default')
+            if (!this.ymeta.has('title')) this.ymeta.set('title', opts.title ?? 'Shared diagram')
+          }, this.ydoc.clientID)
+        }
+      } else {
+        this.ydoc.transact(() => {
+          if (opts.source) this.ytext.insert(0, opts.source)
+          this.ymeta.set('theme', opts.theme ?? 'default')
+          this.ymeta.set('title', opts.title ?? 'Shared diagram')
+        }, this.ydoc.clientID)
+      }
       this.hostUser = this.user
     }
 
@@ -222,6 +241,11 @@ export class CollabSession {
     this.status = status
     this.error = error
     this.statusChanged.emit(status)
+  }
+
+  /** Full document state, for persisting across a host reload. */
+  encodeState(): Uint8Array {
+    return Y.encodeStateAsUpdate(this.ydoc)
   }
 
   // ------------------------------------------------------------------ host
@@ -331,7 +355,9 @@ export class CollabSession {
     this.setStatus('reconnecting')
     const deadline = Date.now() + RECONNECT_WINDOW_MS
     while (Date.now() < deadline && !this.ended) {
-      await new Promise((r) => setTimeout(r, RECONNECT_INTERVAL_MS))
+      await new Promise((r) =>
+        setTimeout(r, this.opts.reconnectIntervalMs ?? RECONNECT_INTERVAL_MS),
+      )
       if (this.ended) return
       try {
         await this.connectToHost(false)

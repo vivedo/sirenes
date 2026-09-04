@@ -9,6 +9,7 @@ import { newId } from '../shared/id'
 
 export const COLLAB_NAME_KEY = 'sirenes:collab-name'
 export const HOST_RESUME_KEY = 'sirenes:collab-host'
+export const HOST_STATE_KEY = 'sirenes:collab-host-state'
 
 const PALETTE = [
   '#e06c75',
@@ -26,6 +27,52 @@ function readName(): string {
     return localStorage.getItem(COLLAB_NAME_KEY) ?? ''
   } catch {
     return ''
+  }
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let bin = ''
+  for (let i = 0; i < bytes.length; i += 0x8000)
+    bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
+  return btoa(bin)
+}
+
+function base64ToBytes(b64: string): Uint8Array {
+  const bin = atob(b64)
+  const out = new Uint8Array(bin.length)
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i)
+  return out
+}
+
+/** Host's Y.Doc state, saved so a reload resumes with the same history as its guests. */
+function readHostState(sessionId: string): Uint8Array | null {
+  try {
+    const raw = sessionStorage.getItem(HOST_STATE_KEY)
+    if (!raw) return null
+    const { id, state } = JSON.parse(raw) as { id: string; state: string }
+    return id === sessionId ? base64ToBytes(state) : null
+  } catch {
+    return null
+  }
+}
+
+function writeHostState(sessionId: string, state: Uint8Array) {
+  try {
+    sessionStorage.setItem(
+      HOST_STATE_KEY,
+      JSON.stringify({ id: sessionId, state: bytesToBase64(state) }),
+    )
+  } catch {
+    /* quota or private mode: resume will fall back to the autosaved text */
+  }
+}
+
+function clearHostState() {
+  try {
+    sessionStorage.removeItem(HOST_STATE_KEY)
+    sessionStorage.removeItem(HOST_RESUME_KEY)
+  } catch {
+    /* ignore */
   }
 }
 
@@ -254,6 +301,7 @@ export const useCollabStore = create<CollabStore>((set, get) => {
             ? doc.fileName.replace(/\.(mmd|mermaid|md|markdown|txt)$/i, '')
             : 'Shared diagram',
           sessionId: resumeId,
+          initialState: resumeId ? readHostState(resumeId) : null,
         })
         set({ session })
         bind(session)
@@ -264,6 +312,21 @@ export const useCollabStore = create<CollabStore>((set, get) => {
         } catch {
           /* ignore */
         }
+        // Keep the shared history on disk so a reload resumes without duplicating the text.
+        let saveTimer: ReturnType<typeof setTimeout> | null = null
+        const save = () => {
+          if (saveTimer) return
+          saveTimer = setTimeout(() => {
+            saveTimer = null
+            writeHostState(id, session.encodeState())
+          }, 250)
+        }
+        session.ydoc.on('update', save)
+        writeHostState(id, session.encodeState())
+        unsubs.push(() => {
+          session.ydoc.off('update', save)
+          if (saveTimer) clearTimeout(saveTimer)
+        })
       } catch (e) {
         const message = e instanceof Error ? e.message : 'Could not start the session'
         cleanup()
@@ -307,11 +370,7 @@ export const useCollabStore = create<CollabStore>((set, get) => {
     leave: () => {
       const s = get().session
       if (!s) return
-      try {
-        sessionStorage.removeItem(HOST_RESUME_KEY)
-      } catch {
-        /* ignore */
-      }
+      clearHostState()
       s.end() // statusChanged -> finishLocally
     },
 

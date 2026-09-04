@@ -269,3 +269,73 @@ describe('shared AI protocol', () => {
     expect(applies).toEqual([{ messageId: 'm1', author: 'G' }])
   })
 })
+
+describe('host resume', () => {
+  it('a host that restores its saved state re-syncs with guests without duplicating text', async () => {
+    const host1 = new CollabSession({
+      role: 'host',
+      transportFactory: createFakeTransport,
+      user: user('Host'),
+      source: 'graph TD\n  A --> B\n',
+    })
+    const id = await host1.host()
+    const guest = new CollabSession({
+      role: 'guest',
+      transportFactory: createFakeTransport,
+      user: user('G'),
+      sessionId: id,
+      reconnectIntervalMs: 30,
+    })
+    all.push(guest)
+    await guest.join()
+    await tick(40)
+    guest.ydoc.transact(
+      () => guest.ytext.insert(guest.ytext.length, '  B --> C\n'),
+      guest.ydoc.clientID,
+    )
+    await tick(40)
+    const saved = host1.encodeState()
+    const textBefore = host1.ytext.toString()
+    expect(textBefore).toBe('graph TD\n  A --> B\n  B --> C\n')
+
+    // "Reload": the host page vanishes without saying goodbye, then comes back under the same id
+    // with its saved state.
+    ;(host1 as unknown as { transport: { destroy(): void } }).transport.destroy()
+    await tick(40)
+    expect(guest.status).toBe('reconnecting')
+    const host2 = new CollabSession({
+      role: 'host',
+      transportFactory: createFakeTransport,
+      user: user('Host'),
+      source: 'IGNORED',
+      sessionId: id,
+      initialState: saved,
+    })
+    all.push(host2)
+    await host2.host()
+    // The guest's first retry may have timed out against the dead host; allow a second one.
+    await tick(700)
+    expect(guest.status).toBe('connected')
+    expect(host2.ytext.toString()).toBe(textBefore)
+    expect(guest.ytext.toString()).toBe(textBefore)
+
+    // Edits keep flowing both ways afterwards.
+    host2.ydoc.transact(() => host2.ytext.insert(host2.ytext.length, 'X'), host2.ydoc.clientID)
+    await tick(40)
+    expect(guest.ytext.toString()).toBe(textBefore + 'X')
+  })
+
+  it('without saved state the resumed host falls back to the autosaved text (documents the duplication risk)', async () => {
+    const host = new CollabSession({
+      role: 'host',
+      transportFactory: createFakeTransport,
+      user: user('Host'),
+      source: 'graph TD\n',
+      sessionId: undefined,
+      initialState: null,
+    })
+    all.push(host)
+    await host.host()
+    expect(host.ytext.toString()).toBe('graph TD\n')
+  })
+})

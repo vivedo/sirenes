@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix: reloading the host tab during a live session duplicated the diagram for everyone; the host now resumes with its saved Yjs state.
+
 - Multiple diagrams per file, as tabs above the editor, separated on disk by `%% --- name ---` comment lines.
 
 - Shared AI assistant in live sessions: guests use the host's assistant, one conversation for everyone, host toggle to disable.

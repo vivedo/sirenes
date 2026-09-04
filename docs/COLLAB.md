@@ -11,7 +11,7 @@ Sirenes can share a diagram live between browsers. Sessions are WebRTC data chan
 - **Never shared:** the AI key, UI settings, file name and origin, local file handles, Google Drive identity or token, recent files. These are never written to the shared document, so they are not merely hidden.
 - Guests see the session title and a "Shared by" badge instead of the host's file name. Their File menu offers only "Save a copy" (own device or own Drive) and Export. Only the host saves to the original.
 - When the host ends the session, or has been unreachable for 30 seconds, guests keep the last synced diagram as an ordinary local document.
-- The host's session id is kept in `sessionStorage`; reloading the host tab resumes the same link.
+- The host's session id and the shared document's Yjs state are kept in `sessionStorage`; reloading the host tab resumes the same link with the same history, so reconnecting guests merge cleanly instead of duplicating the text.
 
 ## Signalling server
 
