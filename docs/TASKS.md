@@ -4,7 +4,7 @@ Ordered backlog derived from [PRD.md](./PRD.md). Phases run in priority order. R
 
 Priority order: UI → URL state → AI → local files → Google Drive → polish.
 
-**Status (2026-09-04):** All phases implemented; v1.0.0 tagged. Drive and OpenRouter are verified against stubbed services only; live checks with real credentials are still to do. Not done: service worker for offline asset caching (6.4, optional), Web Worker rendering (1.12, stretch).
+**Status (2026-09-04):** Phases 0 to 6 implemented; v1.0.0 tagged. Phase 7 (live collaboration) designed, not started. Drive and OpenRouter are verified against stubbed services only; live checks with real credentials are still to do. Not done: service worker for offline asset caching (6.4, optional), Web Worker rendering (1.12, stretch).
 
 ---
 
@@ -148,6 +148,25 @@ Priority order: UI → URL state → AI → local files → Google Drive → pol
       Done when: a stranger can clone, configure, and deploy from the README alone.
 
 ---
+
+## Phase 7 — Live collaboration (peer-to-peer)
+
+Design in PRD section 6.7. Host/guest star topology over PeerJS data channels, Yjs CRDT for the text, nothing about AI or files ever enters the shared document.
+
+- [ ] **7.1 Transport.** `src/collab/transport.ts`: PeerJS wrapper with a small interface (`connect`, `send`, `onMessage`, `onPeer`, `close`) so tests can swap in an in-memory/BroadcastChannel fake. Random 24-char session ids. Configurable signalling via `VITE_PEER_HOST`, `VITE_PEER_PORT`, `VITE_PEER_PATH`, `VITE_PEER_ICE` (JSON). Lazy chunk. [LC-1, LC-12, LC-13]
+      Done when: two tabs exchange messages through the fake transport in a unit test, and through the real PeerJS cloud in a manual check.
+- [ ] **7.2 Shared document.** Yjs `Y.Doc` with `Y.Text` for source and `Y.Map` for theme + session title. A PeerJS provider that broadcasts Yjs updates (host relays to other guests) and syncs state on join. `y-codemirror.next` binding replaces the plain editor document while in a session; `UndoManager` scoped to the local client. [LC-2, LC-4]
+      Done when: concurrent edits in two fake-transport clients converge; undo in one client never reverts the other's text.
+- [ ] **7.3 Presence.** Yjs awareness over the same channel: name, colour, cursor, selection. Remote cursors in the editor, participant chips in the toolbar. Name stored in localStorage. [LC-10]
+      Done when: a second client's cursor is visible and labelled.
+- [ ] **7.4 Session UI.** "Share live" in the Share menu opens a panel: start/stop, session title, copy link, "guests can edit" toggle, participant list, connection state. Guest join flow from `#live:<id>` with a banner while connecting; "Undo" toast if it replaced unsaved work. [LC-1, LC-9, LC-14]
+      Done when: host starts, guest joins from the link, both see each other, host can stop.
+- [ ] **7.5 Guest restrictions and privacy boundary.** Guests: session title instead of file name, "Shared by" badge, File menu reduced to Save a copy (local / own Drive) and Export, no origin. Host: normal File menu. URL fragment sync paused in-session; address bar shows the live link; Share menu still builds a `#pako:` link from current content. [LC-3, LC-5, LC-6, LC-11]
+      Done when: a unit test proves the shared Y.Doc contains only source, theme and title; e2e shows the guest's File menu has no Save.
+- [ ] **7.6 Lifecycle.** Guest auto-reconnect for 30 s; host id persisted in sessionStorage for reload-resume; on host end or timeout guests get "Session ended" and keep an ordinary local document with autosave. Read-only enforcement when editing is off. Plain error message when the connection cannot be established. [LC-7, LC-8, LC-9, LC-12]
+      Done when: closing the host tab leaves the guest editable with the last content and a clear notice.
+- [ ] **7.7 Tests and docs.** Unit tests with the fake transport; e2e with two pages in one browser context using the BroadcastChannel fake; a documented manual check against the real PeerJS server. README section, privacy dialog updated, `docs/COLLAB.md` with self-hosting `peer` and TURN notes. CSP `connect-src` gains the signalling host (`wss:`).
+      Done when: e2e covers join, edit both ways, guest Save a copy, host end.
 
 ## Dependency notes
 
