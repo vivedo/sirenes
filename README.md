@@ -67,7 +67,9 @@ Version 1.0.0. All planned phases are implemented and covered by tests. See [CHA
 
 ### Privacy
 
-- A privacy dialog (status bar link, or open `#privacy`) lists exactly what leaves the browser and to whom.
+- Plain, script-free [privacy policy](public/privacy.html) and [terms of service](public/terms.html) pages are served at `/privacy.html` and `/terms.html`, suitable for Google's OAuth branding review.
+- A privacy dialog (status bar link, or open `#privacy`) summarises what leaves the browser and to whom.
+- First-time visitors see a short welcome explaining the app in five lines. It is not shown to people arriving through a live-session link.
 - "Clear all data" removes the API key, autosave, AI history, recent files and settings, and revokes the Google token.
 - Offline: editing, sharing and local files keep working; Drive and AI controls are disabled with a notice.
 

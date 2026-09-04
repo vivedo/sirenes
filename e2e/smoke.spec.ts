@@ -18,6 +18,7 @@ test.beforeEach(async ({ page }) => {
     if (window.name === 'seeded') return
     window.name = 'seeded'
     localStorage.clear()
+    localStorage.setItem('sirenes:welcomed', '1')
     indexedDB.deleteDatabase('keyval-store')
   })
 })
@@ -236,6 +237,7 @@ test('two browser tabs keep two different files, each surviving its own reload',
   await expect.poll(() => page.evaluate(() => location.hash.length)).toBeGreaterThan(20)
 
   const second = await context.newPage()
+  await second.addInitScript(() => localStorage.setItem('sirenes:welcomed', '1'))
   await second.goto('/#new')
   await expect(second.locator('.cm-content').first()).not.toContainText('first')
   await loadSource(second, 'pie\n  "second": 1')
@@ -259,4 +261,42 @@ test('file menu items do not wrap', async ({ page }) => {
   const box = (await item.boundingBox())!
   const lineHeight = await item.evaluate((el) => parseFloat(getComputedStyle(el).lineHeight))
   expect(box.height).toBeLessThan(lineHeight * 2)
+})
+
+test('first-time visitors get a short welcome, once, but not when joining a live session', async ({
+  page,
+  context,
+}) => {
+  await page.goto('/')
+  await page.evaluate(() => localStorage.removeItem('sirenes:welcomed'))
+  await page.reload()
+  const welcome = page.getByTestId('welcome-dialog')
+  await expect(welcome).toBeVisible()
+  await expect(welcome).toContainText('runs in your browser')
+  await expect(welcome.getByRole('link', { name: 'privacy policy' })).toHaveAttribute(
+    'href',
+    /privacy\.html$/,
+  )
+  await page.getByTestId('welcome-start').click()
+  await expect(welcome).toBeHidden()
+  await page.reload()
+  await expect(page.getByTestId('diagram-tabs')).toBeVisible()
+  await expect(page.getByTestId('welcome-dialog')).toBeHidden()
+
+  // A brand-new visitor arriving through a live link goes straight to the editor.
+  const guest = await context.newPage()
+  await guest.addInitScript(() => localStorage.removeItem('sirenes:welcomed'))
+  await guest.goto('/#live:nobodyhome0000000000000')
+  await expect(guest.getByTestId('join-banner')).toBeVisible()
+  await expect(guest.getByTestId('welcome-dialog')).toBeHidden()
+})
+
+test('privacy and terms pages are served as plain readable pages', async ({ page }) => {
+  await page.goto('/privacy.html')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Privacy Policy')
+  await expect(page.locator('body')).toContainText('drive.file')
+  await expect(page.locator('body')).toContainText('Limited Use')
+  await page.goto('/terms.html')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Terms of Service')
+  await expect(page.locator('body')).toContainText('You own what you create')
 })

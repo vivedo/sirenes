@@ -60,7 +60,15 @@ export function PrivacyDialog({ open, onClose }: { open: boolean; onClose: () =>
       </ul>
       <p>
         No analytics, no third-party scripts beyond Google's sign-in and Picker, no cookies of our
-        own.
+        own. The full{' '}
+        <a href={`${import.meta.env.BASE_URL}privacy.html`} target="_blank" rel="noreferrer">
+          privacy policy
+        </a>{' '}
+        and{' '}
+        <a href={`${import.meta.env.BASE_URL}terms.html`} target="_blank" rel="noreferrer">
+          terms of service
+        </a>{' '}
+        are published as plain pages.
       </p>
       <div className="dialog-actions">
         {confirming ? (

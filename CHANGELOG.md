@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Welcome dialog on first visit (skipped for live-session links); static privacy policy and terms pages; favicon redrawn with smooth sine waves.
+
 - Live sessions share the whole file: every diagram, add/rename/remove by guests, presence per diagram, per-diagram undo.
 - AI conversations are per diagram, locally and in shared sessions.
 - Diagram separator is now `%% sirenes:diagram <id> <name>`; the old form is still read. Diagram tabs span the full width; click the active tab to rename.

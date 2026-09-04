@@ -11,14 +11,21 @@ async function audit(page: import('@playwright/test').Page) {
   return results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical')
 }
 
-test('main screen has no serious accessibility violations', async ({ page }) => {
+test('welcome dialog and main screen have no serious accessibility violations', async ({
+  page,
+}) => {
+  // A fresh visitor: the welcome dialog is up first and is audited as well.
   await page.goto('/')
+  await expect(page.getByTestId('welcome-dialog')).toBeVisible()
+  expect(await audit(page)).toEqual([])
+  await page.getByTestId('welcome-start').click()
   await expect(page.locator('.preview-canvas svg')).toBeVisible()
   const serious = await audit(page)
   expect(serious, JSON.stringify(serious, null, 2)).toEqual([])
 })
 
 test('AI panel and dialogs have no serious accessibility violations', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('sirenes:welcomed', '1'))
   await page.goto('/')
   await page.getByTestId('toggle-ai').click()
   await expect(page.getByTestId('ai-key-settings')).toBeVisible()
@@ -29,6 +36,7 @@ test('AI panel and dialogs have no serious accessibility violations', async ({ p
 })
 
 test('dark theme keeps contrast', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('sirenes:welcomed', '1'))
   await page.goto('/')
   await page.getByTestId('toggle-ui-theme').click()
   await expect.poll(() => page.evaluate(() => document.documentElement.dataset.theme)).toBe('dark')

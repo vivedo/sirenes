@@ -2,7 +2,7 @@
 
 **Status:** v1.0 implemented; live collaboration (6.7) added after v1.0 (see [TASKS.md](./TASKS.md))
 **Date:** 2026-09-04
-**Owner:** Edoardo Viviani
+**Owner:** vivedo
 
 ---
 

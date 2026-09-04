@@ -137,7 +137,7 @@ Priority order: UI → URL state → AI → local files → Google Drive → pol
 
 - [x] **6.1 Clear all data.** Settings action wiping `localStorage`, `sessionStorage`, IndexedDB, and revoking the Google token. Confirmation dialog. [PR-3]
       Done when: after clearing, the app boots as a fresh install.
-- [x] **6.2 Privacy page.** Static route listing exactly what leaves the browser, to whom, and that share links contain the full diagram. Linked from footer and Google consent screen. [PR-5]
+- [x] **6.2 Privacy page.** In-app privacy dialog plus static `/privacy.html` and `/terms.html` pages (no scripts) for the Google consent screen, covering Google user data handling and Limited Use. [PR-5]
       Done when: page is live and referenced in the OAuth consent config.
 - [x] **6.3 Accessibility pass.** Keyboard traversal, focus rings, ARIA labels on icon buttons, SVG `<title>`, contrast check. Lighthouse a11y ≥ 90.
       Done when: axe reports no serious issues.

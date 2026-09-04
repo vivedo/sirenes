@@ -20,6 +20,9 @@ import { DropZone } from './DropZone'
 import { ChoiceDialog } from './ChoiceDialog'
 import { DriveBanner } from './DriveBanner'
 import { PrivacyDialog } from '../settings/PrivacyDialog'
+import { WelcomeDialog } from './WelcomeDialog'
+import { hasBeenWelcomed } from './welcome'
+import { readFragment } from '../share/urlState'
 import { useCollabStore } from '../collab/collabStore'
 import { JoinBanner } from '../collab/JoinBanner'
 import { LivePanel } from '../collab/LivePanel'
@@ -33,6 +36,10 @@ export function App() {
   const aiPanelOpen = useSettingsStore((s) => s.aiPanelOpen)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [privacyOpen, setPrivacyOpen] = useState(location.hash === '#privacy')
+  // First visit only, and never for people arriving through a live-session link.
+  const [welcomeOpen, setWelcomeOpen] = useState(
+    () => !hasBeenWelcomed() && !readFragment().startsWith('live:') && location.hash !== '#privacy',
+  )
   const showShortcuts = useCallback(() => setShortcutsOpen(true), [])
 
   useMermaidRender()
@@ -109,6 +116,7 @@ export function App() {
       <StatusBar onShowPrivacy={() => setPrivacyOpen(true)} />
       <ShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
       <PrivacyDialog open={privacyOpen} onClose={() => setPrivacyOpen(false)} />
+      <WelcomeDialog open={welcomeOpen && hydrated} onClose={() => setWelcomeOpen(false)} />
       <ConflictDialog />
       <ChoiceDialog />
       <LivePanel />

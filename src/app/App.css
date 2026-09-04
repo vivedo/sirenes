@@ -437,3 +437,59 @@ button.danger {
 .toolbar {
   position: relative;
 }
+
+.welcome {
+  max-width: min(520px, 92vw);
+  padding: 24px 28px;
+}
+
+.welcome-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.welcome-head h2 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.welcome-head img {
+  border-radius: 8px;
+}
+
+.welcome-lead {
+  margin: 0 0 14px;
+  color: var(--fg-muted);
+}
+
+.welcome-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 16px;
+}
+
+.welcome-list li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin: 8px 0;
+  line-height: 1.45;
+}
+
+.welcome-list svg {
+  flex: none;
+  margin-top: 3px;
+  color: var(--accent);
+}
+
+.welcome-privacy {
+  margin: 0;
+  font-size: 13px;
+  color: var(--fg-muted);
+}
+
+.welcome-privacy a {
+  color: var(--accent-text);
+}

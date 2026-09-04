@@ -55,6 +55,7 @@ test.beforeEach(async ({ page }) => {
     if (window.name === 'seeded') return
     window.name = 'seeded'
     localStorage.clear()
+    localStorage.setItem('sirenes:welcomed', '1')
     sessionStorage.clear()
     indexedDB.deleteDatabase('keyval-store')
   })
