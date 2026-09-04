@@ -1,6 +1,6 @@
 # Sirenes — Product Requirements Document
 
-**Status:** Draft v0.1
+**Status:** v1.0 — implemented (see [TASKS.md](./TASKS.md) for what shipped and what was left out)
 **Date:** 2026-09-04
 **Owner:** Edoardo Viviani
 
@@ -182,7 +182,7 @@ All target users are comfortable with text-based tools and are willing to bring 
 - **Browser support.** Latest two versions of Chrome, Edge, Firefox, and Safari. File System Access API features degrade gracefully where absent.
 - **Accessibility.** Keyboard-navigable UI, visible focus states, ARIA labels on icon buttons, colour contrast meeting WCAG AA. Rendered SVG carries a `<title>` derived from the diagram.
 - **Security.** Strict Content Security Policy allowing scripts only from self and Google's identity/picker origins, and `connect-src` limited to self, Google APIs, and OpenRouter. No `eval`. Mermaid `securityLevel: 'strict'`.
-- **Offline.** The editor, preview, local file operations, and autosave work offline once the app has loaded. Drive and AI features require connectivity and show a clear offline state.
+- **Offline.** The editor, preview, local file operations, and autosave work offline once the app has loaded. Drive and AI features require connectivity and show a clear offline state. v1 ships no service worker, so a hard reload while offline depends on the browser cache.
 - **Internationalisation.** UI strings are externalised. English only in v1.
 - **Theming.** Light and dark UI themes following system preference with a manual override.
 
@@ -307,11 +307,11 @@ Sirenes has no telemetry backend, so metrics come from qualitative feedback and 
 
 ## 12. Open questions
 
-1. Should `.md` round-tripping (FS-4) be in v1, or should v1 handle only `.mmd`? Recommendation: ship `.mmd` first, add `.md` in M5 if time allows.
-2. Should the AI panel support multiple simultaneous diagrams or only the active document? Recommendation: active document only.
+1. ~~Should `.md` round-tripping (FS-4) be in v1?~~ Resolved: shipped in v1.
+2. ~~Multiple diagrams in the AI panel?~~ Resolved: active document only; history is stored per document with an opt-in carry-over.
 3. Do we want an optional Google Docs export (insert the rendered PNG into a Doc)? This needs the `documents` scope and is out of scope for v1 unless requested.
-4. Should Drive saves also store a rendered SVG sidecar for preview inside Drive? Adds a second file and complicates conflict tracking. Default to no.
-5. Should the URL carry AI conversation history too, or only the diagram? Recommendation: diagram and theme only. History would bloat the link and may contain private prompts.
+4. ~~Rendered SVG sidecar on Drive?~~ Resolved: no.
+5. ~~AI history in the URL?~~ Resolved: diagram, theme and view mode only.
 6. Model default when the user has not chosen one. Candidate: a cheap, fast general model from OpenRouter's list, chosen at runtime rather than hard-coded.
 
 ## 13. Risks

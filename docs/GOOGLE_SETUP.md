@@ -10,7 +10,7 @@ Sirenes talks to Google Drive directly from the browser. There is no server, so 
 ## 2. OAuth consent screen
 
 1. **APIs & Services → OAuth consent screen**. Choose _External_ unless everyone is in your Workspace.
-2. Fill in app name, support email, and the app's homepage and privacy policy URLs (the deployed Sirenes URL and its `/#/privacy` page work).
+2. Fill in app name, support email, and the app's homepage and privacy policy URLs (the deployed Sirenes URL and its `#privacy` dialog work).
 3. Add the scope `https://www.googleapis.com/auth/drive.file`. This scope only lets Sirenes see files the user picks or creates with it.
 4. While the app is in _Testing_, add the Google accounts allowed to use it under **Test users**. Publishing requires Google's verification review, which asks for the privacy policy and a short justification of the scope.
 
