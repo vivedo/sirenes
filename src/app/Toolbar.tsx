@@ -2,7 +2,7 @@ import { useDocumentStore, selectIsDirty } from '../store/documentStore'
 import { useSettingsStore } from '../store/settingsStore'
 import type { Layout } from '../store/types'
 import { getTheme, themesByEngine, type ThemeId } from '../themes/registry'
-import { beautifulBackground } from '../preview/beautifulEngine'
+import { beautifulBackground, isBeautifulSupported } from '../preview/beautifulEngine'
 import { renderAscii } from '../preview/renderer'
 import { useSettingsStore as useSettings } from '../store/settingsStore'
 import { TEMPLATES } from '../documents/templates'
@@ -34,6 +34,7 @@ export function Toolbar({ onShowShortcuts }: { onShowShortcuts: () => void }) {
   const toggleAiPanel = useSettingsStore((s) => s.toggleAiPanel)
 
   const baseName = documentBaseName(doc.fileName)
+  const beautifulOk = isBeautifulSupported(doc.source) || doc.source.trim() === ''
   const resolvedTheme = resolveUiTheme(uiTheme)
 
   const startNew = (source?: string) => {
@@ -188,6 +189,7 @@ export function Toolbar({ onShowShortcuts }: { onShowShortcuts: () => void }) {
                 void copyAscii()
                 close()
               }}
+              disabled={!beautifulOk || !doc.source.trim()}
               testId="copy-ascii"
             >
               Copy as ASCII art
@@ -197,6 +199,7 @@ export function Toolbar({ onShowShortcuts }: { onShowShortcuts: () => void }) {
                 void downloadAscii()
                 close()
               }}
+              disabled={!beautifulOk || !doc.source.trim()}
             >
               Download ASCII .txt
             </MenuItem>
@@ -248,12 +251,19 @@ export function Toolbar({ onShowShortcuts }: { onShowShortcuts: () => void }) {
         <select
           value={doc.theme}
           onChange={(e) => setTheme(e.target.value as ThemeId)}
-          title="Diagram theme"
+          title={
+            beautifulOk
+              ? 'Diagram theme'
+              : 'Beautiful themes support flowchart, sequence, class, state, ER and XY charts'
+          }
           data-testid="mermaid-theme"
         >
-          <optgroup label="Beautiful">
+          <optgroup
+            label={beautifulOk ? 'Beautiful' : 'Beautiful (not available for this diagram type)'}
+            data-testid="beautiful-group"
+          >
             {themesByEngine('beautiful').map((t) => (
-              <option key={t.id} value={t.id}>
+              <option key={t.id} value={t.id} disabled={!beautifulOk}>
                 {t.label}
               </option>
             ))}

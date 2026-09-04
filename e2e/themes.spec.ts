@@ -42,9 +42,20 @@ test('unsupported diagram types fall back to Mermaid with a notice', async ({ pa
   await expect(page.getByTestId('status-engine')).toContainText('Mermaid 11')
   await expect(page.locator('.preview-canvas svg')).toBeVisible()
 
+  // Beautiful themes are disabled in the picker for this diagram type, classic ones are not.
+  const picker = page.getByTestId('mermaid-theme')
+  await expect(picker.locator('option[value="tokyo-night"]')).toHaveJSProperty('disabled', true)
+  await expect(picker.locator('option[value="forest"]')).toHaveJSProperty('disabled', false)
+  await expect(picker.locator('optgroup').first()).toHaveAttribute('label', /not available/)
+
   // Classic Mermaid themes never show the fallback notice.
-  await page.getByTestId('mermaid-theme').selectOption('forest')
+  await picker.selectOption('forest')
   await expect(page.getByTestId('preview-fallback')).toHaveCount(0)
+
+  // Back on a supported diagram the options are enabled again.
+  await page.getByTestId('menu-new').click()
+  await page.getByTestId('template-flowchart').click()
+  await expect(picker.locator('option[value="tokyo-night"]')).toHaveJSProperty('disabled', false)
 })
 
 test('ASCII preview mode renders text, toggles plain characters, and reports unsupported types', async ({
@@ -63,6 +74,15 @@ test('ASCII preview mode renders text, toggles plain characters, and reports uns
   await page.getByTestId('template-gantt').click()
   await expect(page.getByTestId('preview')).toContainText('ASCII rendering supports')
 
+  // Leaving ASCII mode on an unsupported diagram disables the toggle and the ASCII exports.
   await page.getByTestId('preview-mode-svg').click()
   await expect(page.locator('.preview-canvas svg')).toBeVisible()
+  await expect(page.getByTestId('preview-mode-ascii')).toBeDisabled()
+  await page.getByTestId('menu-export').click()
+  await expect(page.getByTestId('copy-ascii')).toBeDisabled()
+  await page.keyboard.press('Escape')
+
+  await page.getByTestId('menu-new').click()
+  await page.getByTestId('template-flowchart').click()
+  await expect(page.getByTestId('preview-mode-ascii')).toBeEnabled()
 })

@@ -3,6 +3,7 @@ import { useDocumentStore } from '../store/documentStore'
 import { useSettingsStore } from '../store/settingsStore'
 import { usePanZoom } from './usePanZoom'
 import { svgSize } from './exportDiagram'
+import { BEAUTIFUL_SUPPORT_NOTE, isBeautifulSupported } from './beautifulEngine'
 import { Icon } from '../shared/Icon'
 import './Preview.css'
 
@@ -56,6 +57,7 @@ export function Preview() {
   }, [])
 
   const empty = source.trim() === ''
+  const asciiOk = empty || isBeautifulSupported(source)
 
   const modeToggle = (
     <div className="segmented preview-mode" role="radiogroup" aria-label="Preview mode">
@@ -73,6 +75,12 @@ export function Preview() {
         aria-checked={previewMode === 'ascii'}
         className={previewMode === 'ascii' ? 'active' : ''}
         onClick={() => setPreviewMode('ascii')}
+        disabled={!asciiOk && previewMode !== 'ascii'}
+        title={
+          asciiOk
+            ? 'Text rendering'
+            : `ASCII rendering is not available for this diagram type. ${BEAUTIFUL_SUPPORT_NOTE}`
+        }
         data-testid="preview-mode-ascii"
       >
         ASCII
