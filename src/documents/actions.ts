@@ -13,6 +13,7 @@ import { ask } from '../app/dialogStore'
 import { useCollabStore } from '../collab/collabStore'
 import { extractMermaid, spliceMermaid } from './markdown'
 import { documentBaseName } from './naming'
+import { baseUrl } from '../share/urlState'
 
 // ---------------------------------------------------------------------------------------------
 // Replacing the current document: no confirmation dialog, an Undo toast instead.
@@ -128,8 +129,27 @@ export async function openRecentLocal(handleKey: string, name: string): Promise<
   }
 }
 
-export function startNewDocument(source?: string) {
-  replaceDocument(() => useDocumentStore.getState().newDocument({ source }), 'New diagram')
+/**
+ * "New file": one file per browser tab, so open a fresh tab. If the browser blocks the popup,
+ * fall back to replacing this tab's document (with Undo).
+ */
+export function startNewDocument() {
+  // No 'noopener' feature here: it makes window.open return null even on success.
+  const win = typeof window.open === 'function' ? window.open(`${baseUrl()}#new`, '_blank') : null
+  if (win) {
+    try {
+      win.opener = null
+    } catch {
+      /* not expected on same origin */
+    }
+    return
+  }
+  replaceDocument(() => useDocumentStore.getState().newDocument({ source: '' }), 'New file')
+}
+
+/** "New diagram": another tab inside this file. */
+export function startNewDiagram() {
+  useDocumentStore.getState().addDiagram('')
 }
 
 // ---------------------------------------------------------------------------------------------

@@ -6,8 +6,12 @@
   background: var(--bg-sunken);
   border-bottom: 1px solid var(--border);
   overflow-x: auto;
-  scrollbar-width: thin;
+  scrollbar-width: none;
   flex: none;
+}
+
+.diagram-tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .diagram-tab {

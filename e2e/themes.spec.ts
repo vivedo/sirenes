@@ -1,4 +1,16 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
+/** Test builds expose the document store; load a diagram without typing it. */
+async function loadSource(page: Page, source: string) {
+  // Wait for hydration, or bootstrap would overwrite the source right after.
+  await expect(page.getByTestId('diagram-tabs')).toBeVisible()
+  await page.evaluate(
+    (src) =>
+      (window as unknown as { __doc: { getState(): { setSource(s: string): void } } }).__doc
+        .getState()
+        .setSource(src),
+    source,
+  )
+}
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
@@ -35,8 +47,10 @@ test('switching to a dark beautiful theme changes the SVG colours and survives a
 test('unsupported diagram types fall back to Mermaid with a notice', async ({ page }) => {
   await page.goto('/')
   page.on('dialog', (d) => d.accept())
-  await page.getByTestId('menu-new').click()
-  await page.getByTestId('template-pie').click()
+  await loadSource(
+    page,
+    'pie showData\n    title Where diagrams live\n    "Google Drive" : 45\n    "Local files" : 35',
+  )
   await expect(page.getByTestId('status-render')).toContainText('No errors')
   await expect(page.getByTestId('preview-fallback')).toBeVisible()
   await expect(page.getByTestId('status-engine')).toContainText('Mermaid 11')
@@ -53,8 +67,10 @@ test('unsupported diagram types fall back to Mermaid with a notice', async ({ pa
   await expect(page.getByTestId('preview-fallback')).toHaveCount(0)
 
   // Back on a supported diagram the options are enabled again.
-  await page.getByTestId('menu-new').click()
-  await page.getByTestId('template-flowchart').click()
+  await loadSource(
+    page,
+    'flowchart TD\n    A[Start] --> B{Is it working?}\n    B -- Yes --> C[Ship it]',
+  )
   await expect(picker.locator('option[value="tokyo-night"]')).toHaveJSProperty('disabled', false)
 })
 
@@ -70,8 +86,10 @@ test('ASCII preview mode renders text, toggles plain characters, and reports uns
   await expect(page.getByTestId('preview-ascii')).toContainText('+')
 
   page.on('dialog', (d) => d.accept())
-  await page.getByTestId('menu-new').click()
-  await page.getByTestId('template-gantt').click()
+  await loadSource(
+    page,
+    'gantt\n    title Release plan\n    dateFormat  YYYY-MM-DD\n    section Build\n    Editor UI :done, ed, 2026-09-08, 2w',
+  )
   await expect(page.getByTestId('preview')).toContainText('ASCII rendering supports')
 
   // Leaving ASCII mode on an unsupported diagram disables the toggle and the ASCII exports.
@@ -82,7 +100,9 @@ test('ASCII preview mode renders text, toggles plain characters, and reports uns
   await expect(page.getByTestId('copy-ascii')).toBeDisabled()
   await page.keyboard.press('Escape')
 
-  await page.getByTestId('menu-new').click()
-  await page.getByTestId('template-flowchart').click()
+  await loadSource(
+    page,
+    'flowchart TD\n    A[Start] --> B{Is it working?}\n    B -- Yes --> C[Ship it]',
+  )
   await expect(page.getByTestId('preview-mode-ascii')).toBeEnabled()
 })

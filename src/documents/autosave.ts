@@ -1,9 +1,18 @@
-import { get, set, del } from 'idb-keyval'
+import { del, get, keys, set } from 'idb-keyval'
 import type { DocumentState } from '../store/types'
 import { useDocumentStore } from '../store/documentStore'
 import { debounce } from '../shared/debounce'
 
-export const AUTOSAVE_KEY = 'sirenes:document'
+/**
+ * One document per browser tab. Each document is stored under its own key so several tabs can
+ * hold different files without overwriting each other. A tab remembers which document it holds
+ * in sessionStorage (per tab); a brand-new tab without a link resumes the most recent document.
+ */
+export const DOC_PREFIX = 'sirenes:doc:'
+export const LAST_DOC_KEY = 'sirenes:last-doc'
+export const TAB_DOC_KEY = 'sirenes:tab-doc'
+/** Pre-multi-tab record; migrated on first read. */
+export const LEGACY_KEY = 'sirenes:document'
 const AUTOSAVE_DEBOUNCE_MS = 300
 
 export interface AutosaveRecord {
@@ -11,36 +20,96 @@ export interface AutosaveRecord {
   savedAt: number
 }
 
-export async function readAutosave(): Promise<AutosaveRecord | null> {
+function normalise(doc: DocumentState): DocumentState {
+  doc.origin ??= null
+  doc.markdown ??= null
+  if (!Array.isArray(doc.diagrams) || doc.diagrams.length === 0) {
+    doc.diagrams = [{ name: null, source: doc.source }]
+    doc.active = 0
+  }
+  doc.active = Math.min(Math.max(0, doc.active ?? 0), doc.diagrams.length - 1)
+  doc.source = doc.diagrams[doc.active].source
+  return doc
+}
+
+function tabDocId(): string | null {
   try {
-    const rec = await get<AutosaveRecord>(AUTOSAVE_KEY)
+    return sessionStorage.getItem(TAB_DOC_KEY)
+  } catch {
+    return null
+  }
+}
+
+function rememberTabDoc(id: string) {
+  try {
+    sessionStorage.setItem(TAB_DOC_KEY, id)
+  } catch {
+    /* ignore */
+  }
+}
+
+async function readDoc(id: string): Promise<AutosaveRecord | null> {
+  try {
+    const rec = await get<AutosaveRecord>(DOC_PREFIX + id)
     if (!rec || typeof rec.doc?.source !== 'string') return null
-    // Records written before origin/markdown/diagrams existed.
-    rec.doc.origin ??= null
-    rec.doc.markdown ??= null
-    if (!Array.isArray(rec.doc.diagrams) || rec.doc.diagrams.length === 0) {
-      rec.doc.diagrams = [{ name: null, source: rec.doc.source }]
-      rec.doc.active = 0
-    }
-    rec.doc.active = Math.min(Math.max(0, rec.doc.active ?? 0), rec.doc.diagrams.length - 1)
-    rec.doc.source = rec.doc.diagrams[rec.doc.active].source
+    rec.doc = normalise(rec.doc)
     return rec
   } catch {
     return null
   }
 }
 
-export async function writeAutosave(doc: DocumentState): Promise<void> {
+/** The document this tab should resume: its own, else the most recent one, else a legacy record. */
+export async function readAutosave(): Promise<AutosaveRecord | null> {
+  const own = tabDocId()
+  if (own) {
+    const rec = await readDoc(own)
+    if (rec) return rec
+  }
   try {
-    await set(AUTOSAVE_KEY, { doc, savedAt: Date.now() } satisfies AutosaveRecord)
+    const last = await get<string>(LAST_DOC_KEY)
+    if (last) {
+      const rec = await readDoc(last)
+      if (rec) return rec
+    }
+    const legacy = await get<AutosaveRecord>(LEGACY_KEY)
+    if (legacy && typeof legacy.doc?.source === 'string') {
+      legacy.doc = normalise(legacy.doc)
+      await writeAutosave(legacy.doc)
+      await del(LEGACY_KEY)
+      return legacy
+    }
+  } catch {
+    /* storage unavailable */
+  }
+  return null
+}
+
+export async function writeAutosave(doc: DocumentState): Promise<void> {
+  rememberTabDoc(doc.id)
+  try {
+    await set(DOC_PREFIX + doc.id, { doc, savedAt: Date.now() } satisfies AutosaveRecord)
+    await set(LAST_DOC_KEY, doc.id)
   } catch {
     // Storage may be unavailable (private mode, quota). The URL fragment still holds the work.
   }
 }
 
+/** Remove every stored document (used by "Clear all data" and tests). */
 export async function clearAutosave(): Promise<void> {
   try {
-    await del(AUTOSAVE_KEY)
+    sessionStorage.removeItem(TAB_DOC_KEY)
+  } catch {
+    /* ignore */
+  }
+  try {
+    for (const k of await keys()) {
+      if (
+        typeof k === 'string' &&
+        (k.startsWith(DOC_PREFIX) || k === LAST_DOC_KEY || k === LEGACY_KEY)
+      )
+        await del(k)
+    }
   } catch {
     /* ignore */
   }
@@ -54,10 +123,12 @@ export function startAutosave(): () => void {
   if (!useDocumentStore.getState().pendingAutosave) void writeAutosave(prev)
   const unsub = useDocumentStore.subscribe((s) => {
     if (s.doc === prev) return
+    const switched = s.doc.id !== prev.id
     prev = s.doc
     // While the user is choosing between the link and the autosave, do not clobber the autosave.
     if (s.pendingAutosave) return
-    save(s.doc)
+    if (switched) save.flush(s.doc)
+    else save(s.doc)
   })
   return () => {
     unsub()

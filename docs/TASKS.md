@@ -43,7 +43,7 @@ Priority order: UI → URL state → AI → local files → Google Drive → pol
       Done when: all four actions produce correct output for a sample diagram.
 - [x] **1.8 Mermaid theme selector.** Toolbar dropdown for default/dark/forest/neutral/base; respects in-source `%%{init}%%`. Stored in the document, not settings. [ED-6]
       Done when: switching theme re-renders and the choice travels with the document.
-- [x] **1.9 Autosave.** Persist `document` slice to IndexedDB (idb-keyval) on change; restore on boot. `beforeunload` guard when dirty. [PR-1, PR-2]
+- [x] **1.9 Autosave.** One IndexedDB record per document; each browser tab keeps its own document id in sessionStorage so several tabs hold different files. `beforeunload` guard when dirty. [PR-1, PR-2]
       Done when: reload restores unsaved text; closing a dirty tab prompts.
 - [x] **1.10 Templates.** "New from template" menu with one starter per diagram type. [ED-8]
       Done when: each template renders without error.

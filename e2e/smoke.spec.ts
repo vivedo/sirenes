@@ -1,4 +1,16 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
+/** Test builds expose the document store; load a diagram without typing it. */
+async function loadSource(page: Page, source: string) {
+  // Wait for hydration, or bootstrap would overwrite the source right after.
+  await expect(page.getByTestId('diagram-tabs')).toBeVisible()
+  await page.evaluate(
+    (src) =>
+      (window as unknown as { __doc: { getState(): { setSource(s: string): void } } }).__doc
+        .getState()
+        .setSource(src),
+    source,
+  )
+}
 
 test.beforeEach(async ({ page }) => {
   // Fresh storage for each test, but only on the first load so reloads keep their state.
@@ -97,22 +109,20 @@ test('layout toggles and theme switch work', async ({ page }) => {
   expect(['light', 'dark']).toContain(theme)
 })
 
-test('templates load and render without errors', async ({ page }) => {
+test('every diagram type renders without errors', async ({ page }) => {
   await page.goto('/')
-  page.on('dialog', (d) => d.accept())
-  for (const id of [
-    'sequence',
-    'class',
-    'state',
-    'er',
-    'gantt',
-    'pie',
-    'mindmap',
-    'timeline',
-    'gitgraph',
+  for (const src of [
+    'sequenceDiagram\n    A->>B: hi',
+    'classDiagram\n    class A',
+    'stateDiagram-v2\n    [*] --> A',
+    'erDiagram\n    A ||--o{ B : has',
+    'gantt\n    dateFormat YYYY-MM-DD\n    a :2026-01-01, 1d',
+    'pie\n    "a": 1',
+    'mindmap\n  root((x))',
+    'timeline\n    2026 : y',
+    'gitGraph\n    commit',
   ]) {
-    await page.getByTestId('menu-new').click()
-    await page.getByTestId(`template-${id}`).click()
+    await loadSource(page, src)
     await expect(page.getByTestId('status-render')).toContainText('No errors', { timeout: 10_000 })
     await expect(page.locator('.preview-canvas svg')).toBeVisible()
   }
@@ -195,24 +205,50 @@ test('going offline flags the status bar and disables Drive and AI sending', asy
   await expect(page.getByTestId('status-offline')).toHaveCount(0)
 })
 
-test('replacing a dirty diagram offers Undo instead of a confirmation dialog', async ({ page }) => {
+test('the New menu adds a diagram to this file or opens a new tab with an empty file', async ({
+  page,
+  context,
+}) => {
   await page.goto('/')
-  let dialogs = 0
-  page.on('dialog', (d) => {
-    dialogs++
-    void d.dismiss()
-  })
-  await page.locator('.cm-content').first().click()
-  await page.keyboard.press('ControlOrMeta+A')
-  await page.keyboard.type('pie\n"precious": 1')
   await page.getByTestId('menu-new').click()
-  await page.getByTestId('template-sequence').click()
-  await expect(page.locator('.cm-content').first()).toContainText('sequenceDiagram')
-  const undo = page.getByTestId('toast-action')
-  await expect(undo).toHaveText('Undo')
-  await undo.click()
-  await expect(page.locator('.cm-content').first()).toContainText('precious')
-  expect(dialogs).toBe(0)
+  await page.getByTestId('new-diagram').click()
+  await expect(page.getByTestId('diagram-tab-1')).toBeVisible()
+  await page.keyboard.press('Escape')
+
+  const popup = context.waitForEvent('page')
+  await page.getByTestId('menu-new').click()
+  await page.getByTestId('new-file').click()
+  const tab = await popup
+  await tab.waitForLoadState()
+  await expect(tab.getByTestId('toolbar-title')).toContainText('Untitled')
+  await expect(tab.locator('.cm-content').first()).not.toContainText('flowchart')
+  await expect(tab.getByTestId('diagram-tab-1')).toHaveCount(0)
+  // The original tab still has its two diagrams.
+  await expect(page.getByTestId('diagram-tab-1')).toBeVisible()
+})
+
+test('two browser tabs keep two different files, each surviving its own reload', async ({
+  page,
+  context,
+}) => {
+  await page.goto('/')
+  await loadSource(page, 'graph TD\n  first --> file')
+  await expect.poll(() => page.evaluate(() => location.hash.length)).toBeGreaterThan(20)
+
+  const second = await context.newPage()
+  await second.goto('/#new')
+  await expect(second.locator('.cm-content').first()).not.toContainText('first')
+  await loadSource(second, 'pie\n  "second": 1')
+  await expect(second.locator('.preview-canvas svg')).toContainText('second')
+
+  // Reload both: each tab resumes its own document (the hash is cleared to prove autosave did it).
+  await page.evaluate(() => history.replaceState(null, '', location.pathname))
+  await page.reload()
+  await expect(page.locator('.cm-content').first()).toContainText('first --> file')
+  await second.evaluate(() => history.replaceState(null, '', location.pathname))
+  await second.reload()
+  await expect(second.locator('.cm-content').first()).toContainText('"second": 1')
+  await expect(second.locator('.cm-content').first()).not.toContainText('first')
 })
 
 test('file menu items do not wrap', async ({ page }) => {

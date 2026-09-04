@@ -5,7 +5,6 @@ import { getTheme, themesByEngine, type ThemeId } from '../themes/registry'
 import { beautifulBackground, isBeautifulSupported } from '../preview/beautifulEngine'
 import { renderAscii } from '../preview/renderer'
 import { useSettingsStore as useSettings } from '../store/settingsStore'
-import { TEMPLATES } from '../documents/templates'
 import { Menu, MenuItem, MenuSeparator } from './Menu'
 import { Icon } from '../shared/Icon'
 import { downloadPng, downloadSvg, standaloneSvg } from '../preview/exportDiagram'
@@ -16,7 +15,7 @@ import { modKey } from '../shared/platform'
 import { resolveUiTheme } from '../settings/uiTheme'
 import { exportBaseName } from '../documents/naming'
 import { FileMenu } from './FileMenu'
-import { startNewDocument } from '../documents/actions'
+import { startNewDiagram, startNewDocument } from '../documents/actions'
 import { SavePanel } from './SavePanel'
 import { LiveStrip } from '../collab/LiveStrip'
 import { selectIsGuest, useCollabStore } from '../collab/collabStore'
@@ -45,10 +44,9 @@ export function Toolbar({ onShowShortcuts }: { onShowShortcuts: () => void }) {
   const liveTitle = useCollabStore((s) => s.title)
   const hostName = useCollabStore((s) => s.hostName)
   const openLive = useCollabStore((s) => s.setPanelOpen)
+  const inSession = useCollabStore((s) => s.session !== null)
   const beautifulOk = isBeautifulSupported(doc.source) || doc.source.trim() === ''
   const resolvedTheme = resolveUiTheme(uiTheme)
-
-  const startNew = (source?: string) => startNewDocument(source)
 
   const exportSvg = () => svg && downloadSvg(svg, baseName)
   const exportPng = async (scale: number) => {
@@ -99,26 +97,25 @@ export function Toolbar({ onShowShortcuts }: { onShowShortcuts: () => void }) {
           <>
             <MenuItem
               onClick={() => {
-                startNew('')
+                startNewDiagram()
+                close()
+              }}
+              hint={`${modKey} ⇧ N`}
+              disabled={inSession || doc.markdown !== null}
+              testId="new-diagram"
+            >
+              New diagram in this file
+            </MenuItem>
+            <MenuItem
+              onClick={() => {
+                startNewDocument()
                 close()
               }}
               hint={`${modKey} N`}
+              testId="new-file"
             >
-              Blank
+              New file (opens a new tab)
             </MenuItem>
-            <MenuSeparator />
-            {TEMPLATES.map((t) => (
-              <MenuItem
-                key={t.id}
-                onClick={() => {
-                  startNew(t.source)
-                  close()
-                }}
-                testId={`template-${t.id}`}
-              >
-                {t.name}
-              </MenuItem>
-            ))}
           </>
         )}
       </Menu>

@@ -4,7 +4,14 @@ import { useSettingsStore } from '../store/settingsStore'
 import { formatMermaid } from '../documents/format'
 import { applySourceEdit } from '../editor/applySourceEdit'
 import { copyShareLink } from '../share/shareLinks'
-import { openFile, saveDocument, startNewDocument, startSaveAs } from '../documents/actions'
+import {
+  openFile,
+  saveDocument,
+  startNewDiagram,
+  startNewDocument,
+  startSaveAs,
+} from '../documents/actions'
+import { useCollabStore } from '../collab/collabStore'
 
 export function useKeyboardShortcuts(onShowShortcuts: () => void) {
   useEffect(() => {
@@ -35,7 +42,10 @@ export function useKeyboardShortcuts(onShowShortcuts: () => void) {
         void openFile()
       } else if (key === 'n' && !e.shiftKey) {
         e.preventDefault()
-        startNewDocument('')
+        startNewDocument()
+      } else if (key === 'n' && e.shiftKey) {
+        e.preventDefault()
+        if (!useCollabStore.getState().session && store.doc.markdown === null) startNewDiagram()
       } else if (key === 'a' && e.shiftKey) {
         e.preventDefault()
         settings.toggleAiPanel()

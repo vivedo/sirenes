@@ -52,6 +52,8 @@ export function decideInitialDocument(
 }
 
 export const LIVE_PREFIX = 'live:'
+/** Fragment used by "New file": start this tab with an empty document instead of resuming one. */
+export const NEW_FRAGMENT = 'new'
 
 export async function bootstrap(): Promise<void> {
   const fragment = readFragment()
@@ -68,12 +70,15 @@ export async function bootstrap(): Promise<void> {
     }
   }
 
-  const autosave = await readAutosave()
-  const { doc, conflict } = decideInitialDocument(fromUrl, autosave?.doc ?? null)
-
   const store = useDocumentStore.getState()
-  store.loadDocument(doc)
-  if (conflict) store.setPendingAutosave(conflict)
+  if (fragment === NEW_FRAGMENT) {
+    store.loadDocument(createBlankDocument({ source: '' }))
+  } else {
+    const autosave = await readAutosave()
+    const { doc, conflict } = decideInitialDocument(fromUrl, autosave?.doc ?? null)
+    store.loadDocument(doc)
+    if (conflict) store.setPendingAutosave(conflict)
+  }
   if (fromUrl?.view === 'preview') {
     const settings = useSettingsStore.getState()
     settings.setLayout('preview')

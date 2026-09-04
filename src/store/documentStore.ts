@@ -185,3 +185,8 @@ export function selectIsDirty(s: DocumentStore): boolean {
   if (s.doc.savedSource === null) return text.trim() !== '' && text !== DEFAULT_TEMPLATE
   return text !== s.doc.savedSource
 }
+
+// Test builds expose the store so end-to-end tests can load sources without typing them.
+if (import.meta.env.VITE_COLLAB_TRANSPORT === 'fake' && typeof window !== 'undefined') {
+  ;(window as unknown as { __doc: typeof useDocumentStore }).__doc = useDocumentStore
+}
