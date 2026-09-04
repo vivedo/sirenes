@@ -127,6 +127,7 @@ test('read-only toggle and ending the session', async ({ page, context }) => {
   const link = await startHosting(page)
   const guest = await context.newPage()
   await guest.goto(link)
+  await expect(guest.getByTestId('shared-badge')).toBeVisible()
   await expect(guest.locator('.cm-content').first()).toContainText('flowchart TD')
 
   await page.getByTestId('live-strip').click()

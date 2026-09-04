@@ -134,7 +134,13 @@ export const useCollabStore = create<CollabStore>((set, get) => {
       }),
     )
 
-    if (view) void import('./editorBinding').then((m) => m.attachCollab(view, session))
+    if (view)
+      void import('./editorBinding').then((m) => {
+        m.attachCollab(view, session)
+        // The editor is the source of truth for text from here on; make the store agree even
+        // when the swap was a no-op (e.g. the guest's local text already matched the host's).
+        useDocumentStore.getState().setSource(view.state.doc.toString())
+      })
     onMeta()
     set({
       participants: session.participants(),
