@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Live sessions share the whole file: every diagram, add/rename/remove by guests, presence per diagram, per-diagram undo.
+- AI conversations are per diagram, locally and in shared sessions.
+- Diagram separator is now `%% sirenes:diagram <id> <name>`; the old form is still read. Diagram tabs span the full width; click the active tab to rename.
+
 - One file per browser tab: documents are autosaved individually and each tab resumes its own. "New file" opens a new tab; "New diagram" adds a tab inside the file. The template gallery is gone.
 - Diagram tab strip no longer shows a scrollbar.
 

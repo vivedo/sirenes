@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useDocumentStore } from '../store/documentStore'
 import { useCollabStore } from '../collab/collabStore'
-import { toast } from '../store/toastStore'
 import { defaultDiagramName } from '../documents/multi'
+import * as actions from '../documents/diagramActions'
 import { Icon } from '../shared/Icon'
 import './DiagramTabs.css'
 
@@ -14,12 +14,8 @@ export function DiagramTabs() {
   const diagrams = useDocumentStore((s) => s.doc.diagrams)
   const active = useDocumentStore((s) => s.doc.active)
   const markdown = useDocumentStore((s) => s.doc.markdown)
-  const switchDiagram = useDocumentStore((s) => s.switchDiagram)
-  const addDiagram = useDocumentStore((s) => s.addDiagram)
-  const renameDiagram = useDocumentStore((s) => s.renameDiagram)
-  const removeDiagram = useDocumentStore((s) => s.removeDiagram)
-  const insertDiagram = useDocumentStore((s) => s.insertDiagram)
-  const inSession = useCollabStore((s) => s.session !== null)
+  const canEditShared = useCollabStore((s) => !s.session || s.role === 'host' || s.canEdit)
+  const participants = useCollabStore((s) => s.participants)
   const [editing, setEditing] = useState<number | null>(null)
   const [draft, setDraft] = useState('')
   const input = useRef<HTMLInputElement>(null)
@@ -28,12 +24,13 @@ export function DiagramTabs() {
     if (editing !== null) input.current?.select()
   }, [editing])
 
-  const locked = inSession || markdown !== null
-  const lockReason = inSession
-    ? 'Live sessions share one diagram at a time'
-    : markdown !== null
+  const locked = markdown !== null || !canEditShared
+  const lockReason =
+    markdown !== null
       ? 'Markdown files hold one diagram'
-      : undefined
+      : !canEditShared
+        ? 'The host has made this session read-only'
+        : undefined
 
   const startRename = (i: number) => {
     if (locked) return
@@ -44,16 +41,10 @@ export function DiagramTabs() {
     setEditing(i)
   }
   const commitRename = () => {
-    if (editing !== null) renameDiagram(editing, draft)
+    if (editing !== null) actions.renameDiagram(editing, draft)
     setEditing(null)
   }
-  const remove = (i: number) => {
-    const removed = removeDiagram(i)
-    if (!removed) return
-    toast.action(`Removed ${removed.name ?? defaultDiagramName(i)}`, 'Undo', () =>
-      insertDiagram(i, removed),
-    )
-  }
+  const remove = (i: number) => actions.removeDiagram(i)
 
   return (
     <div
@@ -86,13 +77,23 @@ export function DiagramTabs() {
                 aria-pressed={isActive}
                 aria-current={isActive ? 'true' : undefined}
                 className="diagram-tab-button"
-                onClick={() => !locked && switchDiagram(i)}
+                onClick={() => (isActive ? startRename(i) : actions.switchDiagram(i))}
                 onDoubleClick={() => startRename(i)}
-                disabled={locked && !isActive}
-                title={lockReason ?? 'Double-click to rename'}
+                title={lockReason ?? (isActive ? 'Click to rename' : name)}
                 data-testid={`diagram-tab-${i}`}
               >
                 {name}
+                {participants
+                  .filter((p) => !p.isSelf && p.diagramId === d.id)
+                  .slice(0, 3)
+                  .map((p) => (
+                    <span
+                      key={p.clientId}
+                      className="live-swatch diagram-tab-presence"
+                      style={{ background: p.color }}
+                      title={`${p.name} is here`}
+                    />
+                  ))}
               </button>
             )}
             {diagrams.length > 1 && !locked && editing !== i && (
@@ -112,7 +113,7 @@ export function DiagramTabs() {
       <button
         className="diagram-tab-add"
         onClick={() => {
-          addDiagram('')
+          actions.addDiagram('')
           setTimeout(() => startRename(useDocumentStore.getState().doc.active), 0)
         }}
         disabled={locked}

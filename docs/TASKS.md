@@ -113,7 +113,7 @@ Priority order: UI → URL state → AI → local files → Google Drive → pol
 - [x] **4.7 Recent files.** List of persisted local handles (Drive ids added in 5.7) in the File menu. [FS-6]
       Done when: a recently opened local file reopens from the menu.
 
-- [x] **4.8 Multiple diagrams per file.** `%% --- name ---` separators, parser/serializer with byte-for-byte round trip, tabs above the editor (add, rename, remove with Undo, switch with fresh undo history), share links and autosave carry all diagrams, exports named after the active diagram. Locked for Markdown documents and during live sessions. [FS-7]
+- [x] **4.8 Multiple diagrams per file.** `%% sirenes:diagram <id> <name>` separators (legacy `%% --- name ---` still read), parser/serializer with byte-for-byte round trip, tabs above the editor (add, rename, remove with Undo, switch with fresh undo history), share links and autosave carry all diagrams, exports named after the active diagram. Locked for Markdown documents and during live sessions. [FS-7]
       Done when: e2e adds a second diagram, saves a file with separators, reopens it as tabs, and a share link restores both.
 
 ## Phase 5 — Google Drive integration
@@ -171,6 +171,9 @@ Design in PRD section 6.7. Host/guest star topology over PeerJS data channels, Y
 - [x] **7.7 Tests and docs.** Unit tests with the fake transport; e2e with two pages in one browser context using the BroadcastChannel fake; a documented manual check against the real PeerJS server. README section, privacy dialog updated, `docs/COLLAB.md` with self-hosting `peer` and TURN notes. CSP `connect-src` gains the signalling host (`wss:`).
       Done when: e2e covers join, edit both ways, guest Save a copy, host end.
 
+- [x] **7.9 Whole-file sessions.** The shared Yjs document holds every diagram (id, name, Y.Text); the editor rebinds to the active diagram; guests add/rename/remove diagrams; presence shows who views which diagram; per-diagram undo managers created eagerly. [LC-2, LC-4]
+      Done when: e2e shows a guest adding a named diagram that appears on the host, both editing different diagrams, and the guest keeping both when the session ends.
+- [x] **7.10 Per-diagram AI threads.** AI conversations keyed by document and diagram id, locally and in shared sessions. [AI-11]
 - [x] **7.8 Shared assistant.** Guest requests are forwarded to the host, executed with the host's key, and the conversation is mirrored back; author names on messages; guests accept/reject proposals through the host; host toggle "Guests can use my AI assistant". [LC-15]
       Done when: e2e shows a guest's prompt answered on the host's key, visible on both sides, applied by the guest, and disabled by the toggle.
 

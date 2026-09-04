@@ -11,20 +11,15 @@ vi.mock('../preview/renderer', () => ({
 }))
 
 import { streamChat } from './openrouter'
-import { useAiStore } from './aiStore'
+import { activeThreadKey, selectActiveThread, useAiStore } from './aiStore'
+import { threadKey } from './history'
 import { useDocumentStore, createBlankDocument } from '../store/documentStore'
 
 const mockedStream = vi.mocked(streamChat)
+const active = () => selectActiveThread(useAiStore.getState())
 
 describe('aiStore.send', () => {
-  beforeEach(() => {
-    useAiStore.setState({
-      apiKey: 'k',
-      keyStatus: 'valid',
-      messages: [],
-      streaming: false,
-      conversationDocId: null,
-    })
+  beforeEach(async () => {
     useDocumentStore.setState({
       doc: createBlankDocument({ source: 'graph TD\n A-->B\n' }),
       render: {
@@ -37,10 +32,12 @@ describe('aiStore.send', () => {
         fallback: null,
       },
     })
+    useAiStore.setState({ apiKey: 'k', keyStatus: 'valid', threads: {}, activeKey: null })
+    await useAiStore.getState().activateThread(activeThreadKey())
     mockedStream.mockReset()
   })
 
-  it('streams a reply, extracts and validates the proposal, records usage', async () => {
+  it('streams a reply into the active thread, extracts and validates the proposal, records usage', async () => {
     mockedStream.mockImplementation(async (opts) => {
       opts.onDelta?.('Added C.\n```mermaid\ngraph TD\n A-->B\n B-->C\n```')
       return {
@@ -50,7 +47,7 @@ describe('aiStore.send', () => {
       }
     })
     await useAiStore.getState().send('add C')
-    const msgs = useAiStore.getState().messages
+    const msgs = active().messages
     expect(msgs).toHaveLength(2)
     expect(msgs[0]).toMatchObject({ role: 'user', content: 'add C' })
     expect(msgs[1].proposal).toEqual({
@@ -59,12 +56,43 @@ describe('aiStore.send', () => {
       applied: false,
     })
     expect(msgs[1].usage?.completionTokens).toBe(7)
-    expect(useAiStore.getState().streaming).toBe(false)
-
-    // The prompt carried the current source and the request.
+    expect(active().streaming).toBe(false)
     const sent = mockedStream.mock.calls[0][0].messages
     expect(sent[0].role).toBe('system')
     expect(sent.at(-1)!.content).toContain('graph TD\n A-->B')
+  })
+
+  it('keeps one thread per diagram', async () => {
+    mockedStream.mockResolvedValue({ content: 'ok', usage: null, finishReason: 'stop' })
+    await useAiStore.getState().send('first diagram')
+    useDocumentStore.getState().addDiagram('pie\n', 'Costs')
+    const secondKey = activeThreadKey()
+    await useAiStore.getState().activateThread(secondKey)
+    expect(active().messages).toHaveLength(0)
+    await useAiStore.getState().send('second diagram')
+    expect(active().messages.map((m) => m.content)).toEqual(['second diagram', 'ok'])
+    // The source sent for the second diagram is the pie, not the flowchart.
+    expect(mockedStream.mock.calls[1][0].messages.at(-1)!.content).toContain('pie')
+    useDocumentStore.getState().switchDiagram(0)
+    await useAiStore.getState().activateThread(activeThreadKey())
+    expect(active().messages.map((m) => m.content)).toEqual(['first diagram', 'ok'])
+  })
+
+  it('can target another thread and source explicitly (host executing a guest request)', async () => {
+    mockedStream.mockResolvedValue({
+      content: '```mermaid\npie\n "x": 1\n```',
+      usage: null,
+      finishReason: 'stop',
+    })
+    const key = threadKey(useDocumentStore.getState().doc.id, 'other-diagram')
+    await useAiStore
+      .getState()
+      .send('make a pie', 'edit', { key, source: 'pie\n', author: 'Grace' })
+    const t = useAiStore.getState().threads[key]
+    expect(t.messages[0]).toMatchObject({ author: 'Grace' })
+    expect(t.messages[1].proposal?.code).toBe('pie\n "x": 1\n')
+    expect(mockedStream.mock.calls[0][0].messages.at(-1)!.content).toContain('```mermaid\npie\n```')
+    expect(active().messages).toHaveLength(0)
   })
 
   it('flags invalid proposals', async () => {
@@ -74,10 +102,7 @@ describe('aiStore.send', () => {
       finishReason: 'stop',
     })
     await useAiStore.getState().send('break it')
-    expect(useAiStore.getState().messages[1].proposal?.error).toEqual({
-      message: 'Parse error',
-      line: 1,
-    })
+    expect(active().messages[1].proposal?.error).toEqual({ message: 'Parse error', line: 1 })
   })
 
   it('does not propose when the reply equals the current source', async () => {
@@ -87,35 +112,34 @@ describe('aiStore.send', () => {
       finishReason: 'stop',
     })
     await useAiStore.getState().send('no-op')
-    expect(useAiStore.getState().messages[1].proposal).toBeUndefined()
+    expect(active().messages[1].proposal).toBeUndefined()
   })
 
   it('records errors and marks the key invalid on 401', async () => {
     const { OpenRouterError } = await vi.importActual<typeof import('./openrouter')>('./openrouter')
     mockedStream.mockRejectedValue(new OpenRouterError('Invalid API key.', 401))
     await useAiStore.getState().send('x')
-    expect(useAiStore.getState().messages[1].error).toMatch(/Invalid API key/)
+    expect(active().messages[1].error).toMatch(/Invalid API key/)
     expect(useAiStore.getState().keyStatus).toBe('invalid')
   })
 
-  it('applyProposal calls the applier and marks it applied; reject removes it', async () => {
+  it('applyProposal calls the applier and records who applied; reject removes it', async () => {
     mockedStream.mockResolvedValue({
       content: '```mermaid\ngraph LR\n X\n```',
       usage: null,
       finishReason: 'stop',
     })
     await useAiStore.getState().send('x')
-    const id = useAiStore.getState().messages[1].id
+    const id = active().messages[1].id
     const apply = vi.fn()
-    useAiStore.getState().applyProposal(id, apply)
+    useAiStore.getState().applyProposal(id, apply, 'Ada')
     expect(apply).toHaveBeenCalledWith('graph LR\n X\n')
-    expect(useAiStore.getState().messages[1].proposal?.applied).toBe(true)
-
+    expect(active().messages[1]).toMatchObject({ proposal: { applied: true }, appliedBy: 'Ada' })
     useAiStore.getState().rejectProposal(id)
-    expect(useAiStore.getState().messages[1].proposal).toBeUndefined()
+    expect(active().messages[1].proposal).toBeUndefined()
   })
 
-  it('cancel aborts the in-flight request', async () => {
+  it('cancel aborts the in-flight request of the active thread', async () => {
     mockedStream.mockImplementation(
       (opts) =>
         new Promise((_, reject) =>
@@ -123,10 +147,10 @@ describe('aiStore.send', () => {
         ),
     )
     const p = useAiStore.getState().send('slow')
-    expect(useAiStore.getState().streaming).toBe(true)
+    expect(active().streaming).toBe(true)
     useAiStore.getState().cancel()
     await p
-    expect(useAiStore.getState().messages[1].error).toBe('Cancelled')
-    expect(useAiStore.getState().streaming).toBe(false)
+    expect(active().messages[1].error).toBe('Cancelled')
+    expect(active().streaming).toBe(false)
   })
 })

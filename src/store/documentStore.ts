@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import type { DocumentState, RenderResult, UrlStatus } from './types'
 import { DEFAULT_THEME, type ThemeId } from '../themes/registry'
 import type { DocumentOrigin, MarkdownWrapper } from '../storage/types'
-import { defaultDiagramName, serializeDiagrams, type Diagram } from '../documents/multi'
+import { defaultDiagramName, newDiagram, serializeDiagrams, type Diagram } from '../documents/multi'
 import { newId } from '../shared/id'
 import { DEFAULT_TEMPLATE } from '../documents/templates'
 
@@ -53,7 +53,7 @@ export function createBlankDocument(opts: NewDocumentOptions = {}): DocumentStat
   const diagrams: Diagram[] =
     opts.diagrams && opts.diagrams.length
       ? opts.diagrams
-      : [{ name: null, source: opts.source ?? DEFAULT_TEMPLATE }]
+      : [newDiagram(opts.source ?? DEFAULT_TEMPLATE)]
   const active = Math.min(Math.max(0, opts.active ?? 0), diagrams.length - 1)
   return {
     id: opts.id ?? newId(),
@@ -109,11 +109,11 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
     set((s) => (s.doc.source === source ? s : { doc: withActiveSource(s.doc, source) })),
   addDiagram: (source = '', name) =>
     set((s) => {
-      const diagrams = s.doc.diagrams.map((d, i) => ({
+      const diagrams: Diagram[] = s.doc.diagrams.map((d, i) => ({
         ...d,
         name: d.name ?? defaultDiagramName(i),
       }))
-      diagrams.push({ name: name ?? defaultDiagramName(diagrams.length), source })
+      diagrams.push(newDiagram(source, name ?? defaultDiagramName(diagrams.length)))
       const active = diagrams.length - 1
       return { doc: { ...s.doc, diagrams, active, source } }
     }),

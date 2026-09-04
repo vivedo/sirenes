@@ -5,9 +5,9 @@ Sirenes can share a diagram live between browsers. Sessions are WebRTC data chan
 ## How it works
 
 - The person who starts sharing is the **host**. Everyone who opens the `#live:<id>` link is a **guest**. Guests connect to the host, who relays edits between guests (star topology).
-- Text is a Yjs CRDT, so concurrent edits merge without anyone blocking anyone. Undo only reverts your own edits.
-- **Shared:** diagram source, diagram theme, session title, presence (name, colour, cursor).
-- **Shared assistant:** the host's AI chat is shared. Guests send requests over the session; the host executes them with its own OpenRouter key and model and publishes the conversation (messages, proposals, usage, author names) to guests. Guests never see the key and never talk to OpenRouter. Accept/reject from a guest goes through the host and follows the edit permission. The host can switch this off.
+- Each diagram's text is a Yjs CRDT, so concurrent edits merge without anyone blocking anyone. Undo only reverts your own edits to the diagram you are viewing.
+- **Shared:** the whole file (every diagram: id, name and source), the diagram theme, the session title, presence (name, colour, cursor, which diagram each person is viewing). Guests with edit permission can add, rename and remove diagrams.
+- **Shared assistant:** the host's AI chat is shared, one conversation per diagram. Guests send requests over the session; the host executes them with its own OpenRouter key and model and publishes the conversation (messages, proposals, usage, author names) to guests. Guests never see the key and never talk to OpenRouter. Accept/reject from a guest goes through the host and follows the edit permission. The host can switch this off.
 - **Never shared:** the AI key, UI settings, file name and origin, local file handles, Google Drive identity or token, recent files. These are never written to the shared document, so they are not merely hidden.
 - Guests see the session title and a "Shared by" badge instead of the host's file name. Their File menu offers only "Save a copy" (own device or own Drive) and Export. Only the host saves to the original.
 - When the host ends the session, or has been unreachable for 30 seconds, guests keep the last synced diagram as an ordinary local document.

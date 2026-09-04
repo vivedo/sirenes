@@ -6,6 +6,8 @@ import {
   removeAwarenessStates,
 } from 'y-protocols/awareness'
 import { Emitter, type PeerLink, type Transport, type TransportFactory } from './transport'
+import type { Diagram } from '../documents/multi'
+import { newId } from '../shared/id'
 
 export type Role = 'host' | 'guest'
 export type SessionStatus = 'connecting' | 'connected' | 'reconnecting' | 'ended' | 'failed'
@@ -16,6 +18,8 @@ export interface Participant {
   color: string
   isHost: boolean
   isSelf: boolean
+  /** Diagram this participant is viewing. */
+  diagramId: string | null
 }
 
 export interface SessionUser {
@@ -24,12 +28,29 @@ export interface SessionUser {
   colorLight: string
 }
 
+/** Snapshot of the host's assistant that guests mirror. Never includes the key. */
+export interface SharedAiState {
+  enabled: boolean
+  hasKey: boolean
+  model: string | null
+  /** Threads keyed by diagram id. */
+  threads: Record<string, { messages: unknown[]; streaming: boolean }>
+}
+
+export interface AiRequest {
+  id: string
+  text: string
+  mode: 'edit' | 'explain'
+  author: string
+  diagramId: string
+}
+
 export interface SessionOptions {
   role: Role
   transportFactory: TransportFactory
   user: SessionUser
-  /** Host: initial content. */
-  source?: string
+  /** Host: the file's diagrams. */
+  diagrams?: Diagram[]
   theme?: string
   title?: string
   /** Host: resume with this id. Guest: id to join. */
@@ -39,14 +60,16 @@ export interface SessionOptions {
   /**
    * Host resume: the Y.Doc state saved before a reload. Restoring it keeps the same history as
    * the guests still connected, so nothing gets duplicated when they re-sync. When present,
-   * `source` is ignored.
+   * `diagrams` is ignored.
    */
   initialState?: Uint8Array | null
   /** Guest reconnect cadence; tests shorten it. */
   reconnectIntervalMs?: number
 }
 
-const PROTOCOL_VERSION = 1
+const PROTOCOL_VERSION = 2
+const RECONNECT_WINDOW_MS = 30_000
+const RECONNECT_INTERVAL_MS = 2_000
 
 /**
  * Bytes arrive in whatever shape the transport's serialiser produced: PeerJS's binarypack turns a
@@ -62,24 +85,6 @@ export function toBytes(value: unknown): Uint8Array {
   if (value && typeof value === 'object')
     return Uint8Array.from(Object.values(value as Record<string, number>))
   throw new Error('Malformed binary payload')
-}
-const RECONNECT_WINDOW_MS = 30_000
-const RECONNECT_INTERVAL_MS = 2_000
-
-/** Snapshot of the host's assistant that guests mirror. Never includes the key. */
-export interface SharedAiState {
-  enabled: boolean
-  hasKey: boolean
-  model: string | null
-  streaming: boolean
-  messages: unknown[]
-}
-
-export interface AiRequest {
-  id: string
-  text: string
-  mode: 'edit' | 'explain'
-  author: string
 }
 
 interface Wire {
@@ -100,31 +105,32 @@ interface Wire {
   end: { t: 'end' }
   aiState: { t: 'ai-state'; state: SharedAiState }
   aiRequest: { t: 'ai-request'; request: AiRequest }
-  aiCancel: { t: 'ai-cancel' }
-  aiApply: { t: 'ai-apply'; messageId: string; author: string }
-  aiReject: { t: 'ai-reject'; messageId: string }
+  aiCancel: { t: 'ai-cancel'; diagramId: string }
+  aiApply: { t: 'ai-apply'; messageId: string; author: string; diagramId: string }
+  aiReject: { t: 'ai-reject'; messageId: string; diagramId: string }
 }
 type WireMessage = Wire[keyof Wire]
 
+/** A diagram as stored in the shared document. */
+export type YDiagram = Y.Map<unknown>
+
 /**
- * One live session, host or guest. Owns the Y.Doc (source text + meta map) and the awareness
- * instance; talks to peers over the transport. The Y.Doc deliberately contains nothing but
- * `source` and `meta` (theme, title): that is the privacy boundary of LC-3.
+ * One live session, host or guest. The Y.Doc holds the whole file: an array of diagrams (each a
+ * map with id, name and a Y.Text source) plus a meta map (theme, title). That is all that is
+ * ever shared; files, Drive and AI keys never enter it.
  */
 export class CollabSession {
   readonly role: Role
   readonly ydoc = new Y.Doc()
-  readonly ytext = this.ydoc.getText('source')
+  readonly ydiagrams = this.ydoc.getArray<YDiagram>('diagrams')
   readonly ymeta = this.ydoc.getMap<string>('meta')
   readonly awareness = new Awareness(this.ydoc)
-  readonly undoManager: Y.UndoManager
+  private undoManagers = new Map<string, Y.UndoManager>()
 
   status: SessionStatus = 'connecting'
   sessionId = ''
   canEdit: boolean
-  /** Host: whether guests may use the host's AI assistant. Guest: what the host allows. */
   aiEnabled: boolean
-  /** Guest: last mirrored assistant state. Host: last state it published. */
   aiState: SharedAiState | null = null
   hostUser: SessionUser | null = null
   error: string | null = null
@@ -137,9 +143,13 @@ export class CollabSession {
   readonly aiStateChanged = new Emitter<SharedAiState>()
   /** Host side: a guest asked the assistant something. */
   readonly aiRequested = new Emitter<AiRequest>()
-  readonly aiCancelRequested = new Emitter<void>()
-  readonly aiApplyRequested = new Emitter<{ messageId: string; author: string }>()
-  readonly aiRejectRequested = new Emitter<{ messageId: string }>()
+  readonly aiCancelRequested = new Emitter<{ diagramId: string }>()
+  readonly aiApplyRequested = new Emitter<{
+    messageId: string
+    author: string
+    diagramId: string
+  }>()
+  readonly aiRejectRequested = new Emitter<{ messageId: string; diagramId: string }>()
 
   private transport: Transport | null = null
   private links = new Map<PeerLink, Set<number>>()
@@ -156,27 +166,22 @@ export class CollabSession {
     this.factory = opts.transportFactory
     this.canEdit = opts.canEdit ?? true
     this.aiEnabled = opts.aiEnabled ?? true
-    // Local edits carry the ydoc's clientID as origin so the UndoManager only tracks our own.
-    this.undoManager = new Y.UndoManager(this.ytext, {
-      trackedOrigins: new Set([this.ydoc.clientID, null]),
-    })
 
     if (this.role === 'host') {
       if (opts.initialState && opts.initialState.length) {
         Y.applyUpdate(this.ydoc, opts.initialState)
-        // Meta may have been set in the restored state; keep whatever it holds.
-        if (!this.ymeta.has('theme') || !this.ymeta.has('title')) {
-          this.ydoc.transact(() => {
-            if (!this.ymeta.has('theme')) this.ymeta.set('theme', opts.theme ?? 'default')
-            if (!this.ymeta.has('title')) this.ymeta.set('title', opts.title ?? 'Shared diagram')
-          }, this.ydoc.clientID)
-        }
       } else {
         this.ydoc.transact(() => {
-          if (opts.source) this.ytext.insert(0, opts.source)
+          for (const d of opts.diagrams ?? []) this.ydiagrams.push([this.makeYDiagram(d)])
           this.ymeta.set('theme', opts.theme ?? 'default')
           this.ymeta.set('title', opts.title ?? 'Shared diagram')
         }, this.ydoc.clientID)
+      }
+      if (this.ydiagrams.length === 0) {
+        this.ydoc.transact(
+          () => this.ydiagrams.push([this.makeYDiagram({ id: newId(), name: null, source: '' })]),
+          this.ydoc.clientID,
+        )
       }
       this.hostUser = this.user
     }
@@ -184,12 +189,13 @@ export class CollabSession {
     this.awareness.setLocalStateField('user', this.user)
     this.awareness.setLocalStateField('role', this.role)
 
+    // Undo managers must exist before the first edit they are meant to track, so keep one per
+    // diagram as the list changes (locally or from peers).
+    this.ensureUndoManagers()
+    this.ydiagrams.observe(() => this.ensureUndoManagers())
+
     this.ydoc.on('update', (update: Uint8Array, origin: unknown) => {
-      // Remote updates arrive with the link as origin; relay them to everyone else.
-      this.broadcast(
-        { t: 'update', update },
-        origin instanceof Object ? (origin as PeerLink) : null,
-      )
+      this.broadcast({ t: 'update', update }, this.isLink(origin) ? origin : null)
     })
     this.awareness.on(
       'update',
@@ -204,7 +210,6 @@ export class CollabSession {
             null,
           )
         } else if (this.role === 'host' && this.isLink(origin)) {
-          // Track which client ids belong to which link, so we can clean up when it drops.
           const set = this.links.get(origin)
           if (set) for (const id of added) set.add(id)
           this.broadcast(
@@ -221,6 +226,110 @@ export class CollabSession {
     return typeof x === 'object' && x !== null && 'remoteId' in x
   }
 
+  // ------------------------------------------------------------ diagrams
+
+  private makeYDiagram(d: Diagram): YDiagram {
+    const m = new Y.Map<unknown>()
+    m.set('id', d.id)
+    m.set('name', d.name)
+    const text = new Y.Text()
+    text.insert(0, d.source)
+    m.set('source', text)
+    return m
+  }
+
+  /** Plain snapshot of every diagram, in order. */
+  diagrams(): Diagram[] {
+    return this.ydiagrams.toArray().map((m) => ({
+      id: String(m.get('id')),
+      name: (m.get('name') as string | null) ?? null,
+      source: (m.get('source') as Y.Text).toString(),
+    }))
+  }
+
+  findYDiagram(id: string): YDiagram | null {
+    return this.ydiagrams.toArray().find((m) => m.get('id') === id) ?? null
+  }
+
+  textFor(id: string): Y.Text | null {
+    return (this.findYDiagram(id)?.get('source') as Y.Text | undefined) ?? null
+  }
+
+  private ensureUndoManagers() {
+    const present = new Set<string>()
+    for (const m of this.ydiagrams.toArray()) {
+      const id = String(m.get('id'))
+      present.add(id)
+      if (!this.undoManagers.has(id)) {
+        const text = m.get('source') as Y.Text
+        this.undoManagers.set(
+          id,
+          new Y.UndoManager(text, { trackedOrigins: new Set([this.ydoc.clientID, null]) }),
+        )
+      }
+    }
+    for (const [id, um] of this.undoManagers) {
+      if (!present.has(id)) {
+        um.destroy()
+        this.undoManagers.delete(id)
+      }
+    }
+  }
+
+  /** Per-diagram undo, tracking only this client's edits. */
+  undoManagerFor(id: string): Y.UndoManager | null {
+    this.ensureUndoManagers()
+    return this.undoManagers.get(id) ?? null
+  }
+
+  private mayEdit(): boolean {
+    return this.role === 'host' || this.canEdit
+  }
+
+  addDiagram(source = '', name: string | null = null): string | null {
+    if (!this.mayEdit()) return null
+    const d: Diagram = { id: newId(), name, source }
+    this.ydoc.transact(() => this.ydiagrams.push([this.makeYDiagram(d)]), this.ydoc.clientID)
+    return d.id
+  }
+
+  renameDiagram(id: string, name: string) {
+    if (!this.mayEdit()) return
+    const m = this.findYDiagram(id)
+    if (m) this.ydoc.transact(() => m.set('name', name), this.ydoc.clientID)
+  }
+
+  removeDiagram(id: string): Diagram | null {
+    if (!this.mayEdit() || this.ydiagrams.length <= 1) return null
+    const arr = this.ydiagrams.toArray()
+    const index = arr.findIndex((m) => m.get('id') === id)
+    if (index === -1) return null
+    const snapshot = this.diagrams()[index]
+    this.ydoc.transact(() => this.ydiagrams.delete(index, 1), this.ydoc.clientID)
+    return snapshot
+  }
+
+  insertDiagram(index: number, d: Diagram) {
+    if (!this.mayEdit()) return
+    const at = Math.min(Math.max(0, index), this.ydiagrams.length)
+    this.ydoc.transact(() => this.ydiagrams.insert(at, [this.makeYDiagram(d)]), this.ydoc.clientID)
+  }
+
+  /** Replace a diagram's whole text (AI proposals for a diagram that may not be open in the editor). */
+  replaceText(id: string, source: string) {
+    const text = this.textFor(id)
+    if (!text || !this.mayEdit()) return
+    this.ydoc.transact(() => {
+      text.delete(0, text.length)
+      text.insert(0, source)
+    }, this.ydoc.clientID)
+  }
+
+  /** Tell others which diagram we are looking at. */
+  setViewing(diagramId: string | null) {
+    this.awareness.setLocalStateField('diagramId', diagramId)
+  }
+
   participants(): Participant[] {
     const out: Participant[] = []
     for (const [clientId, state] of this.awareness.getStates()) {
@@ -232,6 +341,7 @@ export class CollabSession {
         color: user.color,
         isHost: state.role === 'host',
         isSelf: clientId === this.ydoc.clientID,
+        diagramId: (state.diagramId as string | null | undefined) ?? null,
       })
     }
     return out.sort((a, b) => Number(b.isHost) - Number(a.isHost) || a.name.localeCompare(b.name))
@@ -288,39 +398,42 @@ export class CollabSession {
     this.aiPermissionChanged.emit(aiEnabled)
   }
 
+  setTitle(title: string) {
+    if (this.role !== 'host') return
+    this.ydoc.transact(() => this.ymeta.set('title', title), this.ydoc.clientID)
+  }
+
+  setTheme(theme: string) {
+    if (!this.mayEdit()) return
+    this.ydoc.transact(() => this.ymeta.set('theme', theme), this.ydoc.clientID)
+  }
+
   // ------------------------------------------------------------ shared AI
 
-  /** Host: publish the assistant state to every guest (and remember it for late joiners). */
   publishAiState(state: SharedAiState) {
     if (this.role !== 'host') return
     this.aiState = state
     this.broadcast({ t: 'ai-state', state }, null)
   }
 
-  /** Guest: ask the host's assistant. */
   sendAiRequest(request: AiRequest) {
     if (this.role !== 'guest' || !this.aiEnabled) return
     this.hostLink?.send({ t: 'ai-request', request } satisfies Wire['aiRequest'])
   }
 
-  sendAiCancel() {
+  sendAiCancel(diagramId: string) {
     if (this.role !== 'guest') return
-    this.hostLink?.send({ t: 'ai-cancel' } satisfies Wire['aiCancel'])
+    this.hostLink?.send({ t: 'ai-cancel', diagramId } satisfies Wire['aiCancel'])
   }
 
-  sendAiApply(messageId: string, author: string) {
+  sendAiApply(messageId: string, author: string, diagramId: string) {
     if (this.role !== 'guest') return
-    this.hostLink?.send({ t: 'ai-apply', messageId, author } satisfies Wire['aiApply'])
+    this.hostLink?.send({ t: 'ai-apply', messageId, author, diagramId } satisfies Wire['aiApply'])
   }
 
-  sendAiReject(messageId: string) {
+  sendAiReject(messageId: string, diagramId: string) {
     if (this.role !== 'guest') return
-    this.hostLink?.send({ t: 'ai-reject', messageId } satisfies Wire['aiReject'])
-  }
-
-  setTitle(title: string) {
-    if (this.role !== 'host') return
-    this.ydoc.transact(() => this.ymeta.set('title', title), this.ydoc.clientID)
+    this.hostLink?.send({ t: 'ai-reject', messageId, diagramId } satisfies Wire['aiReject'])
   }
 
   // ----------------------------------------------------------------- guest
@@ -340,7 +453,6 @@ export class CollabSession {
     link.onClose(() => this.onHostLost())
     link.send({ t: 'hello', v: PROTOCOL_VERSION, user: this.user } satisfies Wire['hello'])
     if (!first) {
-      // Re-sync after a reconnect; our local edits made while offline flow back with step1/step2.
       link.send({ t: 'step1', sv: Y.encodeStateVector(this.ydoc) } satisfies Wire['step1'])
       link.send({
         t: 'awareness',
@@ -376,7 +488,6 @@ export class CollabSession {
     try {
       this.handleMessage(link, m)
     } catch (e) {
-      // A malformed message from one peer must not take the whole session down.
       console.warn('[collab] dropped message', m?.t, e)
     }
   }
@@ -455,22 +566,27 @@ export class CollabSession {
           text: String(m.request.text).slice(0, 20_000),
           mode: m.request.mode === 'explain' ? 'explain' : 'edit',
           author: String(m.request.author ?? 'Guest').slice(0, 60),
+          diagramId: String(m.request.diagramId ?? ''),
         })
         break
       case 'ai-cancel':
-        if (this.role === 'host' && this.aiEnabled) this.aiCancelRequested.emit()
+        if (this.role === 'host' && this.aiEnabled)
+          this.aiCancelRequested.emit({ diagramId: String(m.diagramId) })
         break
       case 'ai-apply':
-        // Applying a proposal edits the shared diagram, so it follows the edit permission.
         if (this.role === 'host' && this.aiEnabled && this.canEdit)
           this.aiApplyRequested.emit({
             messageId: String(m.messageId),
             author: String(m.author ?? 'Guest').slice(0, 60),
+            diagramId: String(m.diagramId),
           })
         break
       case 'ai-reject':
         if (this.role === 'host' && this.aiEnabled)
-          this.aiRejectRequested.emit({ messageId: String(m.messageId) })
+          this.aiRejectRequested.emit({
+            messageId: String(m.messageId),
+            diagramId: String(m.diagramId),
+          })
         break
       case 'end':
         if (this.role === 'guest') this.finish('ended', 'The host ended the session.')
@@ -509,7 +625,8 @@ export class CollabSession {
   destroy() {
     this.end()
     this.awareness.destroy()
-    this.undoManager.destroy()
+    for (const um of this.undoManagers.values()) um.destroy()
+    this.undoManagers.clear()
     this.ydoc.destroy()
   }
 }

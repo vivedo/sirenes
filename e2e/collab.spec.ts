@@ -270,3 +270,74 @@ test("guests use the host's assistant as one shared chat, and the host can turn 
   await page.getByTestId('live-strip').click()
   await expect(page.getByTestId('live-panel')).toBeVisible()
 })
+
+test('the whole file is shared: guests add and rename diagrams, everyone sees all tabs', async ({
+  page,
+  context,
+}) => {
+  const link = await startHosting(page)
+  const guest = await context.newPage()
+  await guest.goto(link)
+  await expect(guest.getByTestId('shared-badge')).toBeVisible()
+  await expect(guest.getByTestId('diagram-tab-0')).toBeVisible()
+
+  // Guest adds a diagram and names it; the host sees the new tab.
+  await guest.getByTestId('diagram-tab-add').click()
+  await guest.getByTestId('diagram-tab-input').fill('Guest pie')
+  await guest.getByTestId('diagram-tab-input').press('Enter')
+  await expect(page.getByTestId('diagram-tab-1')).toContainText('Guest pie')
+  await guest.locator('.cm-content').first().click()
+  await guest.keyboard.type('pie\n"g": 1')
+  // Host stays on its own diagram while the guest works on the new one.
+  await expect(page.locator('.cm-content').first()).toContainText('flowchart TD')
+  await expect(page.getByTestId('diagram-tab-1')).toContainText('Guest pie')
+  // Host switches to it and sees the guest's text; a presence dot marks where the guest is.
+  await page.getByTestId('diagram-tab-1').click()
+  await expect(page.locator('.cm-content').first()).toContainText('"g": 1')
+  await expect(page.locator('.preview-canvas svg')).toContainText('g')
+
+  // Host renames the first diagram; guest sees it.
+  await page.getByTestId('diagram-tab-0').click()
+  await page.getByTestId('diagram-tab-0').click()
+  await page.getByTestId('diagram-tab-input').fill('Main flow')
+  await page.getByTestId('diagram-tab-input').press('Enter')
+  await expect(guest.getByTestId('diagram-tab-0')).toContainText('Main flow')
+
+  // Ending the session leaves the guest with both diagrams as a local file.
+  await page.getByTestId('live-strip').click()
+  await page.getByTestId('live-leave').click()
+  await expect(guest.getByTestId('live-strip')).toHaveCount(0)
+  await expect(guest.getByTestId('diagram-tab-0')).toContainText('Main flow')
+  await expect(guest.getByTestId('diagram-tab-1')).toContainText('Guest pie')
+})
+
+test('shared assistant keeps one conversation per diagram', async ({ page, context }) => {
+  await mockOpenRouter(page)
+  const link = await startHosting(page)
+  await ensureAiPanel(page)
+  await page.getByTestId('ai-key-input').fill('sk-or-v1-host-000000000')
+  await page.getByTestId('ai-save-key').click()
+
+  const guest = await context.newPage()
+  await guest.route('https://openrouter.ai/**', (route) => route.fulfill({ status: 500 }))
+  await guest.goto(link)
+  await expect(guest.getByTestId('shared-badge')).toBeVisible()
+  await ensureAiPanel(guest)
+
+  // Guest asks about the first diagram.
+  await guest.getByTestId('ai-input').fill('first diagram question')
+  await guest.getByTestId('ai-send').click()
+  await expect(guest.getByTestId('ai-msg-assistant')).toContainText('Added a retry loop.')
+  await expect(page.getByTestId('ai-msg-user')).toContainText('first diagram question')
+
+  // Host adds a second diagram: its chat is empty on both sides; the first keeps its thread.
+  await page.getByTestId('diagram-tab-add').click()
+  await page.getByTestId('diagram-tab-input').press('Enter')
+  await expect(page.getByTestId('ai-messages')).toHaveCount(0)
+  await guest.getByTestId('diagram-tab-1').click()
+  await expect(guest.getByTestId('ai-messages')).toHaveCount(0)
+  await guest.getByTestId('diagram-tab-0').click()
+  await expect(guest.getByTestId('ai-msg-user')).toContainText('first diagram question')
+  await page.getByTestId('diagram-tab-0').click()
+  await expect(page.getByTestId('ai-msg-user')).toContainText('first diagram question')
+})

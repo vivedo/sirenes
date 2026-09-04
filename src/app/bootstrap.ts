@@ -4,7 +4,6 @@ import {
   makeDocument,
   documentText,
 } from '../store/documentStore'
-import { serializeDiagrams } from '../documents/multi'
 import { useSettingsStore } from '../store/settingsStore'
 import { toast } from '../store/toastStore'
 import type { DocumentState, ShareState } from '../store/types'
@@ -15,6 +14,16 @@ import { noteFragmentWritten } from '../share/useUrlSync'
 import { newId } from '../shared/id'
 import { getDriveConfig, parseDriveDeepLink, stripQuery, useDriveStore } from '../storage/drive'
 import { HOST_RESUME_KEY, useCollabStore } from '../collab/collabStore'
+
+/** Same diagrams (names and sources) regardless of ids. */
+function sameContent(doc: DocumentState, url: ShareState): boolean {
+  const urlDiagrams = url.diagrams ?? [{ name: null, source: url.code }]
+  if (urlDiagrams.length !== doc.diagrams.length) return false
+  return urlDiagrams.every((d, i) => {
+    const o = doc.diagrams[i]
+    return o.source === d.source && (urlDiagrams.length === 1 || o.name === d.name)
+  })
+}
 
 export interface BootDecision {
   doc: DocumentState
@@ -30,8 +39,9 @@ export function decideInitialDocument(
   if (fromUrl) {
     // Same diagram in the link and the autosave (the normal reload case): keep the autosaved
     // identity so file name, saved state and AI history survive.
-    const urlText = fromUrl.diagrams ? serializeDiagrams(fromUrl.diagrams) : fromUrl.code
-    if (fromAutosave && documentText(fromAutosave) === urlText) {
+    // Compare by content, not by serialized text: links do not carry diagram ids, so the
+    // separators would differ even when the diagrams are identical.
+    if (fromAutosave && sameContent(fromAutosave, fromUrl)) {
       return { doc: { ...fromAutosave, theme: fromUrl.theme }, conflict: null }
     }
     const doc: DocumentState = makeDocument({
@@ -44,7 +54,7 @@ export function decideInitialDocument(
     const autosaveDiffers =
       fromAutosave !== null &&
       documentText(fromAutosave).trim() !== '' &&
-      documentText(fromAutosave) !== urlText
+      !sameContent(fromAutosave, fromUrl)
     return { doc, conflict: autosaveDiffers ? fromAutosave : null }
   }
   if (fromAutosave) return { doc: fromAutosave, conflict: null }

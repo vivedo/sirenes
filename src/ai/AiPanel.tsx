@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useAiStore } from './aiStore'
-import { useAiSettingsStore } from './aiSettingsStore'
+import { useAiStore, activeThreadKey, selectActiveThread } from './aiStore'
 import { useSettingsStore } from '../store/settingsStore'
 import { useDocumentStore } from '../store/documentStore'
 import { KeySettings } from './KeySettings'
@@ -23,11 +22,13 @@ export function AiPanel() {
   const keyStatus = useAiStore((s) => s.keyStatus)
   const apiKey = useAiStore((s) => s.apiKey)
   const docId = useDocumentStore((s) => s.doc.id)
+  const activeDiagramId = useDocumentStore((s) => s.doc.diagrams[s.doc.active]?.id)
   const source = useDocumentStore((s) => s.doc.source)
-  const loadConversation = useAiStore((s) => s.loadConversation)
+  const activateThread = useAiStore((s) => s.activateThread)
   const clearConversation = useAiStore((s) => s.clearConversation)
-  const messages = useAiStore((s) => s.messages)
-  const streaming = useAiStore((s) => s.streaming)
+  const thread = useAiStore(selectActiveThread)
+  const messages = thread.messages
+  const streaming = thread.streaming
   const send = useAiStore((s) => s.send)
   const cancel = useAiStore((s) => s.cancel)
   const remote = useAiStore((s) => s.remote)
@@ -35,8 +36,6 @@ export function AiPanel() {
   const openReview = useAiStore((s) => s.openReview)
   const applyProposal = useAiStore((s) => s.applyProposal)
   const rejectProposal = useAiStore((s) => s.rejectProposal)
-  const pin = useAiSettingsStore((s) => s.pinConversation)
-  const setPin = useAiSettingsStore((s) => s.setPinConversation)
   const [showSettings, setShowSettings] = useState(false)
 
   const collabRole = useCollabStore((s) => (s.session ? s.role : null))
@@ -44,9 +43,10 @@ export function AiPanel() {
   const hostName = useCollabStore((s) => s.hostName)
   const myName = useCollabStore((s) => s.myName)
 
+  // One thread per diagram: follow the active diagram (hosts and solo users).
   useEffect(() => {
-    if (collabRole !== 'guest') void loadConversation(docId)
-  }, [docId, loadConversation, collabRole])
+    if (collabRole !== 'guest') void activateThread(activeThreadKey())
+  }, [docId, activeDiagramId, activateThread, collabRole])
 
   const onResizeStart = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
@@ -75,8 +75,11 @@ export function AiPanel() {
 
   const hasKey = apiKey !== null && keyStatus !== 'invalid'
   const isGuest = collabRole === 'guest' && remote !== null
-  const shownMessages: AiMessage[] = isGuest ? (remote!.messages as AiMessage[]) : messages
-  const shownStreaming = isGuest ? remote!.streaming : streaming
+  const remoteThread = isGuest ? (remote!.threads[activeDiagramId ?? ''] ?? null) : null
+  const shownMessages: AiMessage[] = isGuest
+    ? ((remoteThread?.messages as AiMessage[] | undefined) ?? [])
+    : messages
+  const shownStreaming = isGuest ? Boolean(remoteThread?.streaming) : streaming
   const review = reviewId ? shownMessages.find((m) => m.id === reviewId) : undefined
 
   const actions = isGuest
@@ -140,7 +143,7 @@ export function AiPanel() {
         <div className="ai-panel-header-actions">
           {!isGuest && hasKey && messages.length > 0 && (
             <button
-              onClick={clearConversation}
+              onClick={() => clearConversation()}
               title="Clear conversation"
               aria-label="Clear conversation"
             >
@@ -191,10 +194,6 @@ export function AiPanel() {
       ) : showSettings ? (
         <div className="ai-panel-body">
           <KeySettings onDone={() => setShowSettings(false)} />
-          <label className="ai-check">
-            <input type="checkbox" checked={pin} onChange={(e) => setPin(e.target.checked)} />
-            Keep the conversation when starting a new document
-          </label>
           <div className="dialog-actions">
             <button onClick={() => setShowSettings(false)}>Back to chat</button>
           </div>
@@ -218,9 +217,11 @@ export function AiPanel() {
           <Composer
             streaming={shownStreaming}
             onSend={(text, mode) =>
-              void send(text, mode, collabRole === 'host' ? myName.trim() || 'Host' : undefined)
+              void send(text, mode, {
+                author: collabRole === 'host' ? myName.trim() || 'Host' : undefined,
+              })
             }
-            onCancel={cancel}
+            onCancel={() => cancel()}
           />
         </>
       )}

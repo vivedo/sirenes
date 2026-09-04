@@ -4,6 +4,7 @@ import { EditorView } from '@codemirror/view'
 import { CollabSession } from './session'
 import { createFakeTransport } from './fakeTransport'
 import { attachCollab } from './editorBinding'
+import { newDiagram } from '../documents/multi'
 import { collabCompartment, historyCompartment, readOnlyCompartment } from '../editor/compartments'
 
 const tick = (ms = 30) => new Promise((r) => setTimeout(r, ms))
@@ -33,7 +34,7 @@ describe('editor binding', () => {
       role: 'host',
       transportFactory: createFakeTransport,
       user: user('H'),
-      source,
+      diagrams: [newDiagram(source, null, 'd1')],
       theme: 'default',
     })
     const id = await host.host()
@@ -52,10 +53,11 @@ describe('editor binding', () => {
       guest.destroy()
     })
 
-    attachCollab(hostView, host)
-    attachCollab(guestView, guest)
+    attachCollab(hostView, host, 'd1')
     await guest.join()
     await tick(60)
+    expect(attachCollab(guestView, guest, 'd1')).toBe(true)
+    await tick(20)
     expect(guestView.state.doc.toString()).toBe(source)
 
     // Guest types two characters at the end.
@@ -65,9 +67,9 @@ describe('editor binding', () => {
     await tick(150)
 
     const expected = source + '\nX'
-    expect(guest.ytext.toString()).toBe(expected)
+    expect(guest.textFor('d1')!.toString()).toBe(expected)
     expect(guestView.state.doc.toString()).toBe(expected)
-    expect(host.ytext.toString()).toBe(expected)
+    expect(host.textFor('d1')!.toString()).toBe(expected)
     expect(hostView.state.doc.toString()).toBe(expected)
 
     // Host types back.
@@ -77,6 +79,42 @@ describe('editor binding', () => {
     })
     await tick(150)
     expect(guestView.state.doc.toString()).toBe(expected + 'Y')
-    expect(host.ytext.toString().length).toBe(expected.length + 1)
+    expect(host.textFor('d1')!.toString().length).toBe(expected.length + 1)
+  })
+})
+
+describe('rebinding between diagrams', () => {
+  it('switching the editor to another diagram never writes into the previous one', async () => {
+    const host = new CollabSession({
+      role: 'host',
+      transportFactory: createFakeTransport,
+      user: user('H'),
+      diagrams: [newDiagram('graph TD\n  first\n', 'One', 'd1'), newDiagram('', 'Two', 'd2')],
+      theme: 'default',
+    })
+    await host.host()
+    const view = makeView('')
+    cleanup.push(() => {
+      view.destroy()
+      host.destroy()
+    })
+    expect(attachCollab(view, host, 'd1')).toBe(true)
+    expect(view.state.doc.toString()).toBe('graph TD\n  first\n')
+
+    // Rebind to the empty second diagram: the editor is cleared, the first diagram is untouched.
+    expect(attachCollab(view, host, 'd2')).toBe(true)
+    expect(view.state.doc.toString()).toBe('')
+    expect(host.textFor('d1')!.toString()).toBe('graph TD\n  first\n')
+
+    // Typing now lands in the second diagram only.
+    view.dispatch({ changes: { from: 0, insert: 'pie' }, userEvent: 'input.type' })
+    await tick(30)
+    expect(host.textFor('d2')!.toString()).toBe('pie')
+    expect(host.textFor('d1')!.toString()).toBe('graph TD\n  first\n')
+
+    // And back again.
+    expect(attachCollab(view, host, 'd1')).toBe(true)
+    expect(view.state.doc.toString()).toBe('graph TD\n  first\n')
+    expect(host.textFor('d2')!.toString()).toBe('pie')
   })
 })

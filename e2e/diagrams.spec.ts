@@ -62,15 +62,23 @@ test('add, rename, switch, and remove diagrams with undo; state survives reload'
 
   await page.reload()
   await expect(page.getByTestId('diagram-tab-1')).toContainText('Costs')
+  // The tab that was active before the reload is active again.
+  await expect(page.getByTestId('diagram-tab-0')).toHaveAttribute('aria-pressed', 'true')
   await page.getByTestId('diagram-tab-1').click()
   await expect(page.locator('.cm-content').first()).toContainText('"Rent": 60')
+
+  // Clicking the active tab renames it.
+  await page.getByTestId('diagram-tab-1').click()
+  await page.getByTestId('diagram-tab-input').fill('Budget')
+  await page.getByTestId('diagram-tab-input').press('Enter')
+  await expect(page.getByTestId('diagram-tab-1')).toContainText('Budget')
 
   // Remove and undo.
   await page.getByTestId('diagram-tab-close-1').click()
   await expect(page.getByTestId('diagram-tab-1')).toHaveCount(0)
   await expect(page.locator('.cm-content').first()).toContainText('flowchart TD')
   await page.getByTestId('toast-action').click()
-  await expect(page.getByTestId('diagram-tab-1')).toContainText('Costs')
+  await expect(page.getByTestId('diagram-tab-1')).toContainText('Budget')
   await expect(page.locator('.cm-content').first()).toContainText('"Rent": 60')
 })
 
@@ -79,7 +87,7 @@ test('saves all diagrams into one .mmd with separators and reopens them as tabs'
 }) => {
   await stubFsa(page, {
     'multi.mmd':
-      '%% --- Login ---\nflowchart TD\n  A --> B\n%% --- Payment ---\nsequenceDiagram\n  U->>S: pay\n',
+      '%% sirenes:diagram lg1 Login\nflowchart TD\n  A --> B\n%% sirenes:diagram pay2 Payment\nsequenceDiagram\n  U->>S: pay\n',
   })
   await page.goto('/')
   await page.getByTestId('menu-file').click()
@@ -99,7 +107,7 @@ test('saves all diagrams into one .mmd with separators and reopens them as tabs'
       (window as unknown as { __fsa: { store: Record<string, string> } }).__fsa.store['multi.mmd'],
   )
   expect(saved).toBe(
-    '%% --- Login ---\nflowchart TD\n  A --> B\n%% --- Payment ---\nsequenceDiagram\n  U->>S: pay\n  S-->>U: receipt\n',
+    '%% sirenes:diagram lg1 Login\nflowchart TD\n  A --> B\n%% sirenes:diagram pay2 Payment\nsequenceDiagram\n  U->>S: pay\n  S-->>U: receipt\n',
   )
 
   // Export names follow the active diagram.

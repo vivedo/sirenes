@@ -9,6 +9,7 @@ import {
   serializeState,
   supportsCompression,
 } from './codec'
+import { newDiagram } from '../documents/multi'
 
 const sample = {
   code: 'flowchart TD\n    A[Ünïcödé] --> B{"quoted"}\n    B --> C\n',
@@ -112,10 +113,7 @@ describe('codec', () => {
 
 describe('multi-diagram links', () => {
   it('carries every diagram plus the active one as mermaid.live-readable code', async () => {
-    const diagrams = [
-      { name: 'Login', source: 'graph TD\n  A\n' },
-      { name: 'Pay', source: 'pie\n  "a": 1\n' },
-    ]
+    const diagrams = [newDiagram('graph TD\n  A\n', 'Login'), newDiagram('pie\n  "a": 1\n', 'Pay')]
     const frag = await encodeState({
       code: diagrams[1].source,
       theme: 'default',
@@ -123,22 +121,21 @@ describe('multi-diagram links', () => {
       active: 1,
     })
     const back = await decodeState(frag)
-    expect(back.diagrams).toEqual(diagrams)
+    // Ids are local identities and stay out of links; names and sources round-trip.
+    expect(back.diagrams?.map(({ name, source }) => ({ name, source }))).toEqual(
+      diagrams.map(({ name, source }) => ({ name, source })),
+    )
     expect(back.active).toBe(1)
     expect(back.code).toBe('pie\n  "a": 1\n')
     const wire = JSON.parse(serializeState({ code: 'x', theme: 'default', diagrams, active: 0 }))
     expect(wire.code).toBe('x')
     expect(wire.sirenes.diagrams).toHaveLength(2)
+    expect(wire.sirenes.diagrams[0]).toEqual({ name: 'Login', source: 'graph TD\n  A\n' })
   })
 
   it('omits the diagrams field for single-diagram documents', () => {
     const wire = JSON.parse(
-      serializeState({
-        code: 'x',
-        theme: 'default',
-        diagrams: [{ name: null, source: 'x' }],
-        active: 0,
-      }),
+      serializeState({ code: 'x', theme: 'default', diagrams: [newDiagram('x')], active: 0 }),
     )
     expect(wire.sirenes).toBeUndefined()
   })

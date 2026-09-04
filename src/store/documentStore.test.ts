@@ -7,6 +7,7 @@ import {
   useDocumentStore,
 } from './documentStore'
 import { DEFAULT_TEMPLATE } from '../documents/templates'
+import { newDiagram } from '../documents/multi'
 
 describe('documentStore', () => {
   beforeEach(() => useDocumentStore.setState({ doc: createBlankDocument(), pendingAutosave: null }))
@@ -75,8 +76,14 @@ describe('documentStore diagrams', () => {
   it('serialises all diagrams for saving and tracks dirtiness on the whole file', () => {
     const s = useDocumentStore.getState()
     s.addDiagram('pie\n', 'Shares')
+    const [d1, d2] = useDocumentStore.getState().doc.diagrams
     expect(documentText(useDocumentStore.getState().doc)).toBe(
-      '%% --- Diagram 1 ---\ngraph TD\n  A\n%% --- Shares ---\npie\n',
+      `%% sirenes:diagram ${d1.id} Diagram 1
+graph TD
+  A
+%% sirenes:diagram ${d2.id} Shares
+pie
+`,
     )
     useDocumentStore.getState().markSaved('multi.mmd')
     expect(selectIsDirty(useDocumentStore.getState())).toBe(false)
@@ -107,10 +114,7 @@ describe('documentStore diagrams', () => {
   it('makeDocument keeps source and diagrams consistent', () => {
     const d = makeDocument({
       source: 'ignored',
-      diagrams: [
-        { name: 'a', source: 'A' },
-        { name: 'b', source: 'B' },
-      ],
+      diagrams: [newDiagram('A', 'a'), newDiagram('B', 'b')],
       active: 1,
     })
     expect(d.source).toBe('B')

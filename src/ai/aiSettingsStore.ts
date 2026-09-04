@@ -6,13 +6,10 @@ interface AiSettingsStore {
   selectedModelId: string | null
   favourites: string[]
   keyStorageMode: KeyStorageMode
-  /** Keep the conversation when a new document is created. */
-  pinConversation: boolean
 
   setSelectedModel: (id: string | null) => void
   toggleFavourite: (id: string) => void
   setKeyStorageMode: (mode: KeyStorageMode) => void
-  setPinConversation: (pin: boolean) => void
 }
 
 export const AI_SETTINGS_STORAGE_KEY = 'sirenes:ai-settings'
@@ -23,7 +20,6 @@ export const useAiSettingsStore = create<AiSettingsStore>()(
       selectedModelId: null,
       favourites: [],
       keyStorageMode: 'local',
-      pinConversation: false,
 
       setSelectedModel: (selectedModelId) => set({ selectedModelId }),
       toggleFavourite: (id) =>
@@ -33,7 +29,6 @@ export const useAiSettingsStore = create<AiSettingsStore>()(
             : [...s.favourites, id],
         })),
       setKeyStorageMode: (keyStorageMode) => set({ keyStorageMode }),
-      setPinConversation: (pinConversation) => set({ pinConversation }),
     }),
     { name: AI_SETTINGS_STORAGE_KEY, version: 1 },
   ),

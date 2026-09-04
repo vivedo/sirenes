@@ -47,7 +47,7 @@ Version 1.0.0. All planned phases are implemented and covered by tests. See [CHA
 - Paste your own OpenRouter key. It is stored in this browser only, in localStorage or for the session, and sent only to openrouter.ai.
 - Pick any OpenRouter model, with search, favourites, context length and price per million tokens.
 - Ask for changes in plain language. Replies stream in and can be cancelled. The proposed diagram is parsed with Mermaid before it is offered, then reviewed as a side-by-side diff. Accept is a single undo step.
-- Presets: fix syntax, explain, simplify, tidy layout, convert to another diagram type. Token and cost usage per reply. Conversations persist per document.
+- Presets: fix syntax, explain, simplify, tidy layout, convert to another diagram type. Token and cost usage per reply. Each diagram has its own conversation, which persists in the browser.
 
 ### Files
 
@@ -55,14 +55,14 @@ Version 1.0.0. All planned phases are implemented and covered by tests. See [CHA
 - No browser pop-ups: Save as uses an in-app panel for the name and destination, and replacing unsaved work shows an Undo toast instead of a confirmation.
 - Markdown files round-trip: only the first ```mermaid block is edited, the rest of the file is written back byte for byte.
 - One `.mmd` file per browser tab, and as many browser tabs as you like: each tab remembers its own file across reloads. "New file" opens a new tab.
-- Several diagrams in one `.mmd` file: tabs above the editor add, rename, switch and remove diagrams. On disk they are separated by a `%% --- name ---` comment line that Mermaid ignores and the editor never shows, so every section is still a plain diagram. Files without separators are unchanged. Share links carry all diagrams; exports are named after the active one.
+- Several diagrams in one `.mmd` file: tabs across the top add, rename (click the active tab), switch and remove diagrams. On disk they are separated by a `%% sirenes:diagram <id> <name>` comment line that Mermaid ignores and the editor never shows, so every section is still a plain diagram. Files without separators are unchanged. Share links carry all diagrams; exports are named after the active one.
 - Google Drive: open with the Google Picker, save in place, or save a new file into a folder you choose with the Picker (the last folder is remembered). Sirenes asks for the `drive.file` scope only, so it can see just the files you pick or create with it. If a file changed on Drive since you opened it, you choose between overwriting and saving a copy. Drive's "Open with" links work. The access token stays in memory and is never stored.
 
 ### Live collaboration
 
-- Share → Share live starts a peer-to-peer session and gives you a `#live:` link. Guests who open it edit the diagram with you in real time, with named cursors and per-person undo. Text merges through a CRDT (Yjs); WebRTC data channels are brokered by a PeerJS signalling server and carry the content encrypted end to end.
+- Share → Share live starts a peer-to-peer session and gives you a `#live:` link. Guests who open it edit the whole file with you in real time: every diagram is shared, people can work on different diagrams at once, guests can add and rename diagrams, and undo is per person and per diagram. Text merges through a CRDT (Yjs); WebRTC data channels are brokered by a PeerJS signalling server and carry the content encrypted end to end.
 - Only the diagram, its theme, a session title and presence are shared. Your files, Google Drive and AI key never enter the session. Guests see a "Shared by" badge instead of your file name and can only save their own copy; you remain the owner of the original.
-- The AI assistant becomes one shared chat: guests type requests, you run them on your key and model, and everyone sees the same conversation with author names. Guests can accept proposals if they may edit. A toggle next to "guests can edit" turns this off.
+- The AI assistant becomes a shared chat, one per diagram: guests type requests, you run them on your key and model, and everyone sees the same conversation with author names. Guests can accept proposals if they may edit. A toggle next to "guests can edit" turns this off.
 - Host controls: session title, "guests can edit" and "guests can use my AI assistant" toggles, end session. Guests keep a local copy when the session ends. See [docs/COLLAB.md](docs/COLLAB.md) for self-hosting the signalling server and adding a TURN relay.
 
 ### Privacy

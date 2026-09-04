@@ -11,7 +11,6 @@ import {
   startNewDocument,
   startSaveAs,
 } from '../documents/actions'
-import { useCollabStore } from '../collab/collabStore'
 
 export function useKeyboardShortcuts(onShowShortcuts: () => void) {
   useEffect(() => {
@@ -30,6 +29,8 @@ export function useKeyboardShortcuts(onShowShortcuts: () => void) {
 
       const store = useDocumentStore.getState()
       const settings = useSettingsStore.getState()
+      // Until bootstrap has restored the document, file actions would be overwritten by it.
+      if (!store.hydrated) return
 
       if (key === 's' && !e.shiftKey) {
         e.preventDefault()
@@ -45,7 +46,7 @@ export function useKeyboardShortcuts(onShowShortcuts: () => void) {
         startNewDocument()
       } else if (key === 'n' && e.shiftKey) {
         e.preventDefault()
-        if (!useCollabStore.getState().session && store.doc.markdown === null) startNewDiagram()
+        if (store.doc.markdown === null) startNewDiagram()
       } else if (key === 'a' && e.shiftKey) {
         e.preventDefault()
         settings.toggleAiPanel()

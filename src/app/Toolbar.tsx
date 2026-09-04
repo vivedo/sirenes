@@ -44,7 +44,6 @@ export function Toolbar({ onShowShortcuts }: { onShowShortcuts: () => void }) {
   const liveTitle = useCollabStore((s) => s.title)
   const hostName = useCollabStore((s) => s.hostName)
   const openLive = useCollabStore((s) => s.setPanelOpen)
-  const inSession = useCollabStore((s) => s.session !== null)
   const beautifulOk = isBeautifulSupported(doc.source) || doc.source.trim() === ''
   const resolvedTheme = resolveUiTheme(uiTheme)
 
@@ -101,7 +100,7 @@ export function Toolbar({ onShowShortcuts }: { onShowShortcuts: () => void }) {
                 close()
               }}
               hint={`${modKey} ⇧ N`}
-              disabled={inSession || doc.markdown !== null}
+              disabled={doc.markdown !== null}
               testId="new-diagram"
             >
               New diagram in this file

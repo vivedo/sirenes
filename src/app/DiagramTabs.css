@@ -2,9 +2,10 @@
   display: flex;
   align-items: stretch;
   gap: 2px;
-  padding: 4px 6px 0;
+  padding: 4px 10px 0;
   background: var(--bg-sunken);
   border-bottom: 1px solid var(--border);
+  grid-row: 4;
   overflow-x: auto;
   scrollbar-width: none;
   flex: none;
@@ -70,4 +71,9 @@
   padding: 2px 8px;
   color: var(--fg-muted);
   align-self: center;
+}
+
+.diagram-tab-presence {
+  margin-left: 5px;
+  vertical-align: middle;
 }

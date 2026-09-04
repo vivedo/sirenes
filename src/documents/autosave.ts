@@ -2,6 +2,8 @@ import { del, get, keys, set } from 'idb-keyval'
 import type { DocumentState } from '../store/types'
 import { useDocumentStore } from '../store/documentStore'
 import { debounce } from '../shared/debounce'
+import { newDiagram } from './multi'
+import { newId } from '../shared/id'
 
 /**
  * One document per browser tab. Each document is stored under its own key so several tabs can
@@ -24,9 +26,10 @@ function normalise(doc: DocumentState): DocumentState {
   doc.origin ??= null
   doc.markdown ??= null
   if (!Array.isArray(doc.diagrams) || doc.diagrams.length === 0) {
-    doc.diagrams = [{ name: null, source: doc.source }]
+    doc.diagrams = [newDiagram(doc.source)]
     doc.active = 0
   }
+  for (const d of doc.diagrams) d.id ??= newId()
   doc.active = Math.min(Math.max(0, doc.active ?? 0), doc.diagrams.length - 1)
   doc.source = doc.diagrams[doc.active].source
   return doc
@@ -123,15 +126,23 @@ export function startAutosave(): () => void {
   if (!useDocumentStore.getState().pendingAutosave) void writeAutosave(prev)
   const unsub = useDocumentStore.subscribe((s) => {
     if (s.doc === prev) return
-    const switched = s.doc.id !== prev.id
+    // Document or diagram switches are written at once: a reload right after must not lose them.
+    const switched = s.doc.id !== prev.id || s.doc.active !== prev.active
     prev = s.doc
     // While the user is choosing between the link and the autosave, do not clobber the autosave.
     if (s.pendingAutosave) return
     if (switched) save.flush(s.doc)
     else save(s.doc)
   })
+  // A reload right after an edit or tab switch must not lose it to the debounce.
+  const flush = () => {
+    const s = useDocumentStore.getState()
+    if (!s.pendingAutosave) save.flush(s.doc)
+  }
+  window.addEventListener('pagehide', flush)
   return () => {
     unsub()
     save.cancel()
+    window.removeEventListener('pagehide', flush)
   }
 }

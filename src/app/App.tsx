@@ -97,17 +97,10 @@ export function App() {
       <Toolbar onShowShortcuts={showShortcuts} />
       <DriveBanner />
       <JoinBanner />
+      {hydrated && <DiagramTabs />}
       <main className="workspace">
         {hydrated ? (
-          <SplitPane
-            left={
-              <div className="editor-pane">
-                <DiagramTabs />
-                <Editor />
-              </div>
-            }
-            right={<Preview />}
-          />
+          <SplitPane left={<Editor />} right={<Preview />} />
         ) : (
           <div className="booting" />
         )}

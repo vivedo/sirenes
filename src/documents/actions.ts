@@ -14,6 +14,7 @@ import { useCollabStore } from '../collab/collabStore'
 import { extractMermaid, spliceMermaid } from './markdown'
 import { documentBaseName } from './naming'
 import { baseUrl } from '../share/urlState'
+import { addDiagram } from './diagramActions'
 
 // ---------------------------------------------------------------------------------------------
 // Replacing the current document: no confirmation dialog, an Undo toast instead.
@@ -147,9 +148,9 @@ export function startNewDocument() {
   replaceDocument(() => useDocumentStore.getState().newDocument({ source: '' }), 'New file')
 }
 
-/** "New diagram": another tab inside this file. */
+/** "New diagram": another tab inside this file (also inside a live session). */
 export function startNewDiagram() {
-  useDocumentStore.getState().addDiagram('')
+  addDiagram('')
 }
 
 // ---------------------------------------------------------------------------------------------

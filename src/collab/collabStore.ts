@@ -134,36 +134,61 @@ export const useCollabStore = create<CollabStore>((set, get) => {
 
   /** Wire a session into the document store and editor; shared for host and guest. */
   const bind = (session: CollabSession) => {
-    const docStore = useDocumentStore.getState()
-    const view = getEditorView()
-
-    // Text flows Y.Doc -> editor (yCollab) -> store (editor update listener). The store never
-    // writes text into the editor during a session; see the guard in Editor.tsx. Only the meta
-    // map (theme, title) is mirrored here.
-    const onMeta = () => {
+    // Shared document -> store: mirror the diagram list (names, order, sources of inactive
+    // diagrams) and the meta map. The active diagram's text flows through the editor binding.
+    const reconcile = () => {
+      const docStore = useDocumentStore.getState()
+      const doc = docStore.doc
+      const shared = session.diagrams()
+      if (!shared.length) return
+      const activeId = doc.diagrams[doc.active]?.id
+      let active = shared.findIndex((d) => d.id === activeId)
+      if (active === -1) active = Math.min(doc.active, shared.length - 1)
+      const view = getEditorView()
+      const next = shared.map((d, i) =>
+        i === active && view ? { ...d, source: view.state.doc.toString() } : d,
+      )
+      const same =
+        next.length === doc.diagrams.length &&
+        next.every((d, i) => {
+          const o = doc.diagrams[i]
+          return o.id === d.id && o.name === d.name && o.source === d.source
+        }) &&
+        active === doc.active
+      if (!same)
+        docStore.loadDocument({ ...doc, diagrams: next, active, source: next[active].source })
       const theme = session.ymeta.get('theme')
       if (isThemeId(theme) && useDocumentStore.getState().doc.theme !== theme)
         docStore.setTheme(theme)
       set({ title: session.ymeta.get('title') ?? 'Shared diagram' })
     }
-    session.ymeta.observe(onMeta)
-    unsubs.push(() => session.ymeta.unobserve(onMeta))
-
-    // Document store -> Y.Doc for the theme (the text goes through the editor binding).
-    let prevTheme = useDocumentStore.getState().doc.theme
+    session.ydiagrams.observeDeep(reconcile)
+    session.ymeta.observe(reconcile)
     unsubs.push(
-      useDocumentStore.subscribe((s) => {
-        if (s.doc.theme !== prevTheme) {
-          prevTheme = s.doc.theme
-          if (
-            session.ymeta.get('theme') !== s.doc.theme &&
-            (session.role === 'host' || session.canEdit)
-          )
-            session.ydoc.transact(
-              () => session.ymeta.set('theme', s.doc.theme),
-              session.ydoc.clientID,
-            )
+      () => session.ydiagrams.unobserveDeep(reconcile),
+      () => session.ymeta.unobserve(reconcile),
+    )
+
+    // Editor <-> active diagram: (re)bind whenever the active diagram changes.
+    let boundId: string | null = null
+    const rebind = () => {
+      const view = getEditorView()
+      if (!view) return
+      const { doc } = useDocumentStore.getState()
+      const id = doc.diagrams[doc.active]?.id
+      if (!id || id === boundId) return
+      void import('./editorBinding').then((m) => {
+        if (m.attachCollab(view, session, id)) {
+          boundId = id
+          useDocumentStore.getState().setSource(view.state.doc.toString())
         }
+      })
+    }
+    unsubs.push(
+      useDocumentStore.subscribe((s, prev) => {
+        if (s.doc.active !== prev.doc.active || s.doc.diagrams !== prev.doc.diagrams) rebind()
+        if (s.doc.theme !== prev.doc.theme && session.ymeta.get('theme') !== s.doc.theme)
+          session.setTheme(s.doc.theme)
       }),
     )
 
@@ -176,28 +201,21 @@ export const useCollabStore = create<CollabStore>((set, get) => {
         set({ participants, hostName: session.hostUser?.name ?? null }),
       ),
       session.permissionChanged.on((canEdit) => {
-        // Guests learn the host's name and permissions from the welcome message.
         set({ canEdit, hostName: session.hostUser?.name ?? null })
         const v = getEditorView()
         if (v && session.role === 'guest')
           void import('./editorBinding').then((m) => m.setCollabReadOnly(v, !canEdit))
       }),
+      session.aiPermissionChanged.on((aiEnabled) => set({ aiEnabled })),
     )
-
-    unsubs.push(session.aiPermissionChanged.on((aiEnabled) => set({ aiEnabled })))
     void import('./aiBridge').then((m) => unsubs.push(m.attachAiBridge(session)))
 
-    if (view)
-      void import('./editorBinding').then((m) => {
-        m.attachCollab(view, session)
-        // The editor is the source of truth for text from here on; make the store agree even
-        // when the swap was a no-op (e.g. the guest's local text already matched the host's).
-        useDocumentStore.getState().setSource(view.state.doc.toString())
-      })
-    onMeta()
+    reconcile()
+    rebind()
     set({
       participants: session.participants(),
       canEdit: session.canEdit,
+      aiEnabled: session.aiEnabled,
       hostName: session.hostUser?.name ?? null,
     })
   }
@@ -222,20 +240,20 @@ export const useCollabStore = create<CollabStore>((set, get) => {
         aiEnabled: true,
       })
       if (wasGuest) {
-        // Keep the last synced text (read from the editor, the authority during the session) and
-        // give it a fresh single-diagram local identity.
+        // Keep every diagram as last synced and give the file a fresh local identity.
         const d = useDocumentStore.getState().doc
-        const source = view ? view.state.doc.toString() : d.source
+        const diagrams = session.diagrams()
+        const active = Math.min(d.active, Math.max(0, diagrams.length - 1))
         useDocumentStore.getState().loadDocument(
           makeDocument({
             ...d,
-            source,
+            source: diagrams[active]?.source ?? d.source,
+            diagrams: diagrams.length ? diagrams : undefined,
+            active,
             id: newId(),
             fileName: null,
             origin: null,
             savedSource: null,
-            diagrams: undefined,
-            active: 0,
           }),
         )
         toast.info(`${reason ?? 'Left the session.'} You keep a local copy of the diagram.`)
@@ -295,7 +313,7 @@ export const useCollabStore = create<CollabStore>((set, get) => {
           role: 'host',
           transportFactory: factory,
           user: user(),
-          source: doc.source,
+          diagrams: doc.diagrams,
           theme: getTheme(doc.theme).id,
           title: doc.fileName
             ? doc.fileName.replace(/\.(mmd|mermaid|md|markdown|txt)$/i, '')
