@@ -1,4 +1,4 @@
-export { driveProvider, openDriveFileById } from './driveProvider'
+export { driveProvider, openDriveFileById, chooseDriveFolder } from './driveProvider'
 export { useDriveStore } from './driveStore'
 export { getDriveConfig } from './config'
 export { signOut, isSignedIn } from './auth'

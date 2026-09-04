@@ -28,7 +28,7 @@ describe('drive api', () => {
       captured = { url, init }
       return json({ id: 'new', name: 'notes.md', mimeType: 'text/markdown', modifiedTime: 'T2' })
     }) as unknown as typeof fetch
-    const meta = await createFile('notes.md', '# hi', 'tok', fetchImpl)
+    const meta = await createFile('notes.md', '# hi', 'tok', 'folder-1', fetchImpl)
     expect(meta.id).toBe('new')
     const { url, init } = captured!
     expect(url).toContain('/upload/drive/v3/files?uploadType=multipart')
@@ -38,6 +38,7 @@ describe('drive api', () => {
     const body = init.body as string
     expect(body).toContain('"name":"notes.md"')
     expect(body).toContain('"mimeType":"text/markdown"')
+    expect(body).toContain('"parents":["folder-1"]')
     expect(body).toContain('\r\n\r\n# hi\r\n')
   })
 

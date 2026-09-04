@@ -73,7 +73,7 @@ export function PrivacyDialog({ open, onClose }: { open: boolean; onClose: () =>
         ) : (
           <>
             <button className="outline" onClick={() => setConfirming(true)} data-testid="clear-all">
-              Clear all data…
+              Clear all data
             </button>
             <button className="primary" onClick={close}>
               Close

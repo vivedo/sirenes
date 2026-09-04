@@ -16,13 +16,13 @@ import { modKey } from '../shared/platform'
 import { resolveUiTheme } from '../settings/uiTheme'
 import { documentBaseName } from '../documents/naming'
 import { FileMenu } from './FileMenu'
-import { confirmDiscard } from '../documents/actions'
+import { startNewDocument } from '../documents/actions'
+import { SavePanel } from './SavePanel'
 
 export function Toolbar({ onShowShortcuts }: { onShowShortcuts: () => void }) {
   const doc = useDocumentStore((s) => s.doc)
   const svg = useDocumentStore((s) => s.render.svg)
   const dirty = useDocumentStore(selectIsDirty)
-  const newDocument = useDocumentStore((s) => s.newDocument)
   const setTheme = useDocumentStore((s) => s.setTheme)
   const fallback = useDocumentStore((s) => s.render.fallback)
   const asciiPlain = useSettings((s) => s.asciiPlain)
@@ -39,10 +39,7 @@ export function Toolbar({ onShowShortcuts }: { onShowShortcuts: () => void }) {
   const beautifulOk = isBeautifulSupported(doc.source) || doc.source.trim() === ''
   const resolvedTheme = resolveUiTheme(uiTheme)
 
-  const startNew = (source?: string) => {
-    if (!confirmDiscard()) return
-    newDocument({ source })
-  }
+  const startNew = (source?: string) => startNewDocument(source)
 
   const exportSvg = () => svg && downloadSvg(svg, baseName)
   const exportPng = async (scale: number) => {
@@ -118,6 +115,7 @@ export function Toolbar({ onShowShortcuts }: { onShowShortcuts: () => void }) {
       </Menu>
 
       <FileMenu />
+      <SavePanel />
 
       <Menu label="Export" icon="download" testId="menu-export">
         {(close) => (

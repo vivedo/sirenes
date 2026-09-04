@@ -7,8 +7,20 @@ export function Toasts() {
   return (
     <div className="toasts" aria-live="polite">
       {toasts.map((t) => (
-        <div key={t.id} className={`toast ${t.kind}`} role="status" onClick={() => dismiss(t.id)}>
-          {t.message}
+        <div key={t.id} className={`toast ${t.kind}`} role="status">
+          <span onClick={() => dismiss(t.id)}>{t.message}</span>
+          {t.action && (
+            <button
+              className="toast-action"
+              onClick={() => {
+                t.action?.onClick()
+                dismiss(t.id)
+              }}
+              data-testid="toast-action"
+            >
+              {t.action.label}
+            </button>
+          )}
         </div>
       ))}
     </div>

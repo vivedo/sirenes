@@ -30,6 +30,13 @@ export interface SaveResult {
   origin: DocumentOrigin
 }
 
+/** Where "Save as" should write. Chosen in the in-app save panel; no browser prompts. */
+export interface SaveTarget {
+  name: string
+  /** Drive folder to create the file in. null means My Drive root. Ignored by local providers. */
+  folderId?: string | null
+}
+
 export interface ConflictInfo {
   message: string
   remoteModifiedTime: string | null
@@ -41,8 +48,10 @@ export interface StorageProvider {
   open(): Promise<OpenedFile | null>
   /** Write to the existing origin. Throws when the origin cannot be written (caller falls back to saveAs). */
   save(origin: DocumentOrigin, content: string, name: string): Promise<SaveResult>
-  /** Pick a new target. Resolves null when the user cancels. */
-  saveAs(content: string, suggestedName: string): Promise<SaveResult | null>
+  /** Write to a new file. Local FSA still shows the OS picker (the target name is the suggestion); resolves null when that is cancelled. */
+  saveAs(content: string, target: SaveTarget): Promise<SaveResult | null>
+  /** Whether saveAs needs a name (and folder) from the in-app panel, or handles it itself (OS picker). */
+  needsSaveTarget: boolean
   /** Optional: has the remote copy changed since we opened it? */
   checkConflict?(origin: DocumentOrigin): Promise<ConflictInfo | null>
 }

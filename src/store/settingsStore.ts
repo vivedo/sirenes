@@ -15,6 +15,8 @@ interface SettingsStore {
   previewMode: PreviewMode
   /** In ASCII mode: plain +-| characters instead of Unicode box drawing. */
   asciiPlain: boolean
+  /** Last Drive folder used for Save as; null means My Drive. */
+  driveFolder: { id: string; name: string } | null
 
   setUiTheme: (theme: UiTheme) => void
   setLayout: (layout: Layout) => void
@@ -23,6 +25,7 @@ interface SettingsStore {
   setAiPanelWidth: (px: number) => void
   setPreviewMode: (mode: PreviewMode) => void
   setAsciiPlain: (plain: boolean) => void
+  setDriveFolder: (folder: { id: string; name: string } | null) => void
 }
 
 export const SETTINGS_STORAGE_KEY = 'sirenes:settings'
@@ -49,6 +52,7 @@ export const useSettingsStore = create<SettingsStore>()(
       aiPanelWidth: 360,
       previewMode: 'svg',
       asciiPlain: false,
+      driveFolder: null,
 
       setUiTheme: (uiTheme) => set({ uiTheme }),
       setLayout: (layout) => set({ layout }),
@@ -57,6 +61,7 @@ export const useSettingsStore = create<SettingsStore>()(
       setAiPanelWidth: (px) => set({ aiPanelWidth: clampAiPanelWidth(px) }),
       setPreviewMode: (previewMode) => set({ previewMode }),
       setAsciiPlain: (asciiPlain) => set({ asciiPlain }),
+      setDriveFolder: (driveFolder) => set({ driveFolder }),
     }),
     { name: SETTINGS_STORAGE_KEY, version: 1 },
   ),

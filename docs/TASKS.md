@@ -102,7 +102,7 @@ Priority order: UI → URL state → AI → local files → Google Drive → pol
       Done when: interface is typed and a fake provider passes the contract test.
 - [x] **4.2 File System Access provider.** `showOpenFilePicker` / `showSaveFilePicker` with `.mmd`, `.mermaid`, `.md` types; write via `createWritable`. Persist handle in IndexedDB and re-request permission on boot. [FS-1, FS-2]
       Done when: open, edit, Cmd/Ctrl+S overwrites the same file in Chrome without a prompt.
-- [x] **4.3 Fallback provider.** `<input type="file">` for open, `Blob` + `<a download>` for save. Auto-selected when the FSA API is absent. [FS-2]
+- [x] **4.3 Fallback provider.** `<input type="file">` for open, `Blob` + `<a download>` for save with the name from the in-app save panel. Auto-selected when the FSA API is absent. [FS-2]
       Done when: open/save works in Firefox and Safari.
 - [x] **4.4 Drag and drop.** Whole-window drop zone with overlay; opens the dropped file via the fallback path. [FS-3]
       Done when: dropping a `.mmd` file loads it.
@@ -121,7 +121,7 @@ Priority order: UI → URL state → AI → local files → Google Drive → pol
       Done when: sign-in, expiry handling, and sign-out work; token never appears in storage.
 - [x] **5.3 Picker.** Google Picker filtered to `.mmd`/`.mermaid`/`.md`/`text/plain`, single select. [GD-3]
       Done when: picking a file returns its id and name.
-- [x] **5.4 Drive provider.** `files.get?alt=media` for open; `files.create` multipart for save-as; `files.update` for save. Store `id`, `name`, `modifiedTime`, `headRevisionId`. [GD-4]
+- [x] **5.4 Drive provider.** `files.get?alt=media` for open; `files.create` multipart for save-as, into a Picker-chosen folder; `files.update` for save. Store `id`, `name`, `modifiedTime`. [GD-4]
       Done when: open → edit → save → reopen shows the edit.
 - [x] **5.5 Conflict detection.** Before `files.update`, fetch `modifiedTime`; if newer than opened, show "Overwrite / Save as copy / Cancel". [GD-5]
       Done when: editing the file in Drive web between open and save triggers the dialog.

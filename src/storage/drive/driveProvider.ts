@@ -4,10 +4,11 @@ import type {
   OpenedFile,
   SaveResult,
   StorageProvider,
+  SaveTarget,
 } from '../types'
 import { createFile, downloadFile, getFileMeta, updateFile, DriveApiError } from './api'
 import { getAccessToken, invalidateToken } from './auth'
-import { pickDriveFile } from './picker'
+import { pickDriveFile, pickDriveFolder, type PickedItem } from './picker'
 
 /** Run a Drive call; on 401 drop the token, re-prompt once, and retry. */
 async function withToken<T>(fn: (token: string) => Promise<T>): Promise<T> {
@@ -35,8 +36,15 @@ export async function openDriveFileById(id: string): Promise<OpenedFile> {
   })
 }
 
+/** Let the user choose a Drive folder with the Picker. Resolves null on cancel. */
+export async function chooseDriveFolder(): Promise<PickedItem | null> {
+  const token = await getAccessToken({ interactive: true })
+  return pickDriveFolder(token)
+}
+
 export const driveProvider: StorageProvider = {
   id: 'drive',
+  needsSaveTarget: true,
 
   async open() {
     const token = await getAccessToken({ interactive: true })
@@ -56,11 +64,9 @@ export const driveProvider: StorageProvider = {
     })
   },
 
-  async saveAs(content: string, suggestedName: string): Promise<SaveResult | null> {
-    const name = window.prompt('File name on Google Drive', suggestedName)
-    if (!name) return null
+  async saveAs(content: string, target: SaveTarget): Promise<SaveResult | null> {
     return withToken(async (token) => {
-      const meta = await createFile(name, content, token)
+      const meta = await createFile(target.name, content, token, target.folderId ?? null)
       return {
         name: meta.name,
         origin: { kind: 'drive', fileId: meta.id, modifiedTime: meta.modifiedTime },

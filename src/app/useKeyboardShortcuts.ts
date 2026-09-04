@@ -4,7 +4,7 @@ import { useSettingsStore } from '../store/settingsStore'
 import { formatMermaid } from '../documents/format'
 import { applySourceEdit } from '../editor/applySourceEdit'
 import { copyShareLink } from '../share/shareLinks'
-import { confirmDiscard, openFile, saveDocument, saveDocumentAs } from '../documents/actions'
+import { openFile, saveDocument, startNewDocument, startSaveAs } from '../documents/actions'
 
 export function useKeyboardShortcuts(onShowShortcuts: () => void) {
   useEffect(() => {
@@ -29,14 +29,13 @@ export function useKeyboardShortcuts(onShowShortcuts: () => void) {
         void saveDocument()
       } else if (key === 's' && e.shiftKey) {
         e.preventDefault()
-        void saveDocumentAs()
+        void startSaveAs('local')
       } else if (key === 'o' && !e.shiftKey) {
         e.preventDefault()
         void openFile()
       } else if (key === 'n' && !e.shiftKey) {
         e.preventDefault()
-        if (!confirmDiscard()) return
-        store.newDocument({ source: '' })
+        startNewDocument('')
       } else if (key === 'a' && e.shiftKey) {
         e.preventDefault()
         settings.toggleAiPanel()

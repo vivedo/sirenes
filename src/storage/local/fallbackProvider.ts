@@ -1,4 +1,4 @@
-import type { DocumentOrigin, OpenedFile, SaveResult, StorageProvider } from '../types'
+import type { DocumentOrigin, OpenedFile, SaveResult, SaveTarget, StorageProvider } from '../types'
 import { FILE_EXTENSIONS } from '../types'
 import { downloadBlob } from '../../shared/download'
 
@@ -32,6 +32,7 @@ function pickFile(): Promise<File | null> {
 /** Browsers without the File System Access API: open via <input type=file>, save via download. */
 export const fallbackProvider: StorageProvider = {
   id: 'local',
+  needsSaveTarget: true,
 
   async open() {
     const file = await pickFile()
@@ -43,10 +44,8 @@ export const fallbackProvider: StorageProvider = {
     return { name, origin }
   },
 
-  async saveAs(content: string, suggestedName: string): Promise<SaveResult | null> {
-    const name = window.prompt('File name', suggestedName)
-    if (!name) return null
-    downloadBlob(new Blob([content], { type: 'text/plain;charset=utf-8' }), name)
-    return { name, origin: { kind: 'local', handleKey: null } }
+  async saveAs(content: string, target: SaveTarget): Promise<SaveResult | null> {
+    downloadBlob(new Blob([content], { type: 'text/plain;charset=utf-8' }), target.name)
+    return { name: target.name, origin: { kind: 'local', handleKey: null } }
   },
 }

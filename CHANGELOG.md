@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Save to Google Drive into a folder chosen with the Picker; the last folder is remembered.
+- In-app save panel replaces `window.prompt`; Undo toast replaces `window.confirm` when new/open would discard unsaved work.
+- Wider menus without wrapping; trailing ellipses removed from menu labels.
+
 ## 1.0.0 — 2026-09-04
 
 First release.

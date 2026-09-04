@@ -367,3 +367,73 @@ button.danger {
 .privacy li {
   margin: 4px 0;
 }
+
+.save-panel {
+  position: absolute;
+  top: 44px;
+  left: 12px;
+  z-index: 25;
+  width: 360px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  padding: 12px;
+}
+
+.save-destinations {
+  display: flex;
+  margin-bottom: 10px;
+}
+
+.save-destinations button {
+  flex: 1;
+  justify-content: center;
+}
+
+.save-field {
+  display: block;
+  margin-bottom: 10px;
+}
+
+.save-field > span {
+  display: block;
+  font-size: 12px;
+  color: var(--fg-muted);
+  margin-bottom: 4px;
+}
+
+.save-field input {
+  width: 100%;
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 5px 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.save-folder {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.save-folder-name {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.save-hint {
+  margin: 0 0 8px;
+}
+
+.toolbar {
+  position: relative;
+}

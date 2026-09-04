@@ -84,12 +84,11 @@ describe('driveProvider', () => {
     expect(await driveProvider.checkConflict!({ kind: 'local', handleKey: null })).toBeNull()
   })
 
-  it('saveAs prompts for a name and creates the file', async () => {
-    vi.spyOn(window, 'prompt').mockReturnValue('fresh.mmd')
-    const r = await driveProvider.saveAs('content', 'diagram.mmd')
-    expect(createFile).toHaveBeenCalledWith('fresh.mmd', 'content', 'tok')
+  it('saveAs creates the file in the chosen folder', async () => {
+    const r = await driveProvider.saveAs('content', { name: 'fresh.mmd', folderId: 'folder-9' })
+    expect(createFile).toHaveBeenCalledWith('fresh.mmd', 'content', 'tok', 'folder-9')
     expect(r?.origin).toEqual({ kind: 'drive', fileId: 'new', modifiedTime: 'T9' })
-    vi.spyOn(window, 'prompt').mockReturnValue(null)
-    expect(await driveProvider.saveAs('c', 'd.mmd')).toBeNull()
+    await driveProvider.saveAs('c', { name: 'root.mmd' })
+    expect(createFile).toHaveBeenLastCalledWith('root.mmd', 'c', 'tok', null)
   })
 })

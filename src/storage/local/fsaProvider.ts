@@ -1,4 +1,4 @@
-import type { DocumentOrigin, OpenedFile, SaveResult, StorageProvider } from '../types'
+import type { DocumentOrigin, OpenedFile, SaveResult, SaveTarget, StorageProvider } from '../types'
 import { ensurePermission, loadHandle, storeHandle } from './handles'
 
 const TYPES: FilePickerAcceptType[] = [
@@ -46,6 +46,7 @@ async function writeHandle(handle: FileSystemFileHandle, content: string) {
 /** Local files via the File System Access API (Chromium, Edge). Saves overwrite in place. */
 export const fsaProvider: StorageProvider = {
   id: 'local',
+  needsSaveTarget: false,
 
   async open() {
     try {
@@ -65,9 +66,9 @@ export const fsaProvider: StorageProvider = {
     return { name: handle.name || name, origin }
   },
 
-  async saveAs(content: string, suggestedName: string): Promise<SaveResult | null> {
+  async saveAs(content: string, target: SaveTarget): Promise<SaveResult | null> {
     try {
-      const handle = await window.showSaveFilePicker({ types: TYPES, suggestedName })
+      const handle = await window.showSaveFilePicker({ types: TYPES, suggestedName: target.name })
       await writeHandle(handle, content)
       const key = await storeHandle(handle)
       return { name: handle.name, origin: { kind: 'local', handleKey: key } }

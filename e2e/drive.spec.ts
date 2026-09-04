@@ -25,8 +25,15 @@ async function stubGoogle(page: Page) {
       return self
     }
     let cb: ((d: unknown) => void) | null = null
+    let title = ''
     const picker = {
-      setVisible: () => cb?.({ action: 'picked', docs: [{ id: 'file-1', name: 'drive.mmd' }] }),
+      setVisible: () =>
+        cb?.({
+          action: 'picked',
+          docs: /folder/i.test(title)
+            ? [{ id: 'folder-1', name: 'Diagrams', mimeType: 'application/vnd.google-apps.folder' }]
+            : [{ id: 'file-1', name: 'drive.mmd' }],
+        }),
       dispose: () => {},
     }
     w.google = {
@@ -50,10 +57,13 @@ async function stubGoogle(page: Page) {
       },
       picker: {
         Action: { PICKED: 'picked', CANCEL: 'cancel' },
-        ViewId: { DOCS: 'docs' },
+        ViewId: { DOCS: 'docs', FOLDERS: 'folders' },
         DocsViewMode: { LIST: 'list' },
         DocsView: class {
           setMimeTypes() {
+            return this
+          }
+          setSelectFolderEnabled() {
             return this
           }
           setIncludeFolders() {
@@ -76,7 +86,8 @@ async function stubGoogle(page: Page) {
           setAppId() {
             return this
           }
-          setTitle() {
+          setTitle(t: string) {
+            title = t
             return this
           }
           setOrigin() {
@@ -178,13 +189,31 @@ test('open from Drive, save in place, detect a remote change, save as copy', asy
   await page.keyboard.press('ControlOrMeta+S')
   await expect(page.getByTestId('choice-dialog')).toBeVisible()
   await expect(page.getByTestId('choice-dialog')).toContainText('changed on Google Drive')
-  page.once('dialog', (d) => d.accept('copy.mmd'))
   await page.getByTestId('choice-copy').click()
+  // The in-app save panel opens on Drive with a suggested copy name; pick a folder and save.
+  const panel = page.getByTestId('save-panel')
+  await expect(panel).toBeVisible()
+  await expect(page.getByTestId('save-dest-drive')).toHaveAttribute('aria-checked', 'true')
+  await expect(page.getByTestId('save-name')).toHaveValue('drive (copy).mmd')
+  await expect(page.getByTestId('save-folder')).toContainText('My Drive')
+  await page.getByTestId('save-choose-folder').click()
+  await expect(page.getByTestId('save-folder')).toContainText('Diagrams')
+  await page.getByTestId('save-name').fill('copy.mmd')
+  await page.getByTestId('save-submit').click()
+  await expect(panel).toHaveCount(0)
   await expect(page.getByTestId('toolbar-title')).toContainText('copy.mmd')
   expect(drive.creates).toHaveLength(1)
   expect(drive.creates[0].name).toBe('copy.mmd')
+  expect(drive.creates[0].body).toContain('"parents":["folder-1"]')
   expect(drive.creates[0].body).toContain('saved --> again')
   expect(drive.patches).toHaveLength(1)
+
+  // The folder is remembered for the next Drive save.
+  await page.getByTestId('menu-file').click()
+  await page.getByTestId('drive-save-as').click()
+  await expect(page.getByTestId('save-folder')).toContainText('Diagrams')
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('save-panel')).toHaveCount(0)
 
   // Recent lists the Drive files; sign out entry appears.
   await page.getByTestId('menu-file').click()

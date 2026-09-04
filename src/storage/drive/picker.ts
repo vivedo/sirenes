@@ -14,21 +14,27 @@ async function ensurePicker(): Promise<void> {
 const MIME_TYPES =
   'text/plain,text/markdown,text/x-markdown,application/octet-stream,application/x-mermaid'
 
-/** Show the Google Picker limited to diagram-like files. Resolves null on cancel. */
-export async function pickDriveFile(token: string): Promise<{ id: string; name: string } | null> {
+export interface PickedItem {
+  id: string
+  name: string
+}
+
+const FOLDER_MIME = 'application/vnd.google-apps.folder'
+
+async function showPicker(
+  token: string,
+  makeView: () => google.picker.DocsView,
+  title: string,
+): Promise<PickedItem | null> {
   const config = getDriveConfig()
   if (!config) throw new Error('Google Drive is not configured for this deployment.')
   await ensurePicker()
   return new Promise((resolve) => {
-    const view = new google.picker.DocsView(google.picker.ViewId.DOCS)
-      .setMimeTypes(MIME_TYPES)
-      .setIncludeFolders(true)
-      .setMode(google.picker.DocsViewMode.LIST)
     let builder = new google.picker.PickerBuilder()
-      .addView(view)
+      .addView(makeView())
       .setOAuthToken(token)
       .setDeveloperKey(config.apiKey)
-      .setTitle('Open a Mermaid diagram')
+      .setTitle(title)
       .setOrigin(location.origin)
       .setCallback((data) => {
         if (data.action === google.picker.Action.PICKED) {
@@ -44,4 +50,31 @@ export async function pickDriveFile(token: string): Promise<{ id: string; name: 
     const picker = builder.build()
     picker.setVisible(true)
   })
+}
+
+/** Show the Google Picker limited to diagram-like files. Resolves null on cancel. */
+export function pickDriveFile(token: string): Promise<PickedItem | null> {
+  return showPicker(
+    token,
+    () =>
+      new google.picker.DocsView(google.picker.ViewId.DOCS)
+        .setMimeTypes(MIME_TYPES)
+        .setIncludeFolders(true)
+        .setMode(google.picker.DocsViewMode.LIST),
+    'Open a Mermaid diagram',
+  )
+}
+
+/** Show the Google Picker in folder mode. Resolves null on cancel. */
+export function pickDriveFolder(token: string): Promise<PickedItem | null> {
+  return showPicker(
+    token,
+    () =>
+      new google.picker.DocsView(google.picker.ViewId.FOLDERS)
+        .setMimeTypes(FOLDER_MIME)
+        .setIncludeFolders(true)
+        .setSelectFolderEnabled(true)
+        .setMode(google.picker.DocsViewMode.LIST),
+    'Choose a folder',
+  )
 }

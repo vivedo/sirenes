@@ -1,6 +1,8 @@
 import { useDocumentStore, selectIsDirty } from '../store/documentStore'
+import { useSaveUiStore, type SaveDestination } from '../app/saveUiStore'
 import { toast } from '../store/toastStore'
-import type { OpenedFile, SaveResult, StorageProvider } from '../storage/types'
+import type { DocumentState } from '../store/types'
+import type { OpenedFile, SaveResult, SaveTarget, StorageProvider } from '../storage/types'
 import { isMarkdownFileName, isSupportedFileName } from '../storage/types'
 import { getLocalProvider, NoHandleError, openFromFile, openFromHandle } from '../storage/local'
 import { addRecent, removeRecent } from '../storage/recent'
@@ -10,12 +12,27 @@ import { ask } from '../app/dialogStore'
 import { extractMermaid, serializeForFile } from './markdown'
 import { documentBaseName } from './naming'
 
-/** Ask before discarding unsaved work. Returns true when it is fine to proceed. */
-export function confirmDiscard(): boolean {
-  const s = useDocumentStore.getState()
-  if (!selectIsDirty(s)) return true
-  return window.confirm('Discard unsaved changes to the current diagram?')
+// ---------------------------------------------------------------------------------------------
+// Replacing the current document: no confirmation dialog, an Undo toast instead.
+
+/**
+ * Run `replace` (which swaps in a new document). If the current document had unsaved work,
+ * offer to bring it back via a toast. The old document is only held in memory.
+ */
+export function replaceDocument(replace: () => void, what: string) {
+  const before = useDocumentStore.getState()
+  const previous: DocumentState | null = selectIsDirty(before) ? before.doc : null
+  replace()
+  if (previous) {
+    const label = previous.fileName ?? 'your unsaved diagram'
+    toast.action(`${what}. ${label} was set aside.`, 'Undo', () => {
+      useDocumentStore.getState().loadDocument(previous)
+    })
+  }
 }
+
+// ---------------------------------------------------------------------------------------------
+// Opening
 
 /** Turn an opened file into the current document. Handles Markdown extraction. */
 export function loadOpenedFile(file: OpenedFile): boolean {
@@ -36,13 +53,17 @@ export function loadOpenedFile(file: OpenedFile): boolean {
     if (extracted.count > 1)
       toast.warn(`${file.name} has ${extracted.count} mermaid blocks. Editing the first one.`)
   }
-  useDocumentStore.getState().newDocument({
-    source,
-    fileName: file.name,
-    saved: true,
-    origin: file.origin,
-    markdown,
-  })
+  replaceDocument(
+    () =>
+      useDocumentStore.getState().newDocument({
+        source,
+        fileName: file.name,
+        saved: true,
+        origin: file.origin,
+        markdown,
+      }),
+    `Opened ${file.name}`,
+  )
   if (file.origin.kind === 'local' && file.origin.handleKey)
     void addRecent({ kind: 'local', id: file.origin.handleKey, name: file.name })
   if (file.origin.kind === 'drive')
@@ -55,7 +76,6 @@ function describe(e: unknown): string {
 }
 
 export async function openFile(provider: StorageProvider = getLocalProvider()): Promise<void> {
-  if (!confirmDiscard()) return
   try {
     const opened = await provider.open()
     if (opened) loadOpenedFile(opened)
@@ -69,7 +89,6 @@ export async function openDroppedItem(
   item: DataTransferItem | null,
   file: File | null,
 ): Promise<void> {
-  if (!confirmDiscard()) return
   try {
     const getHandle = (
       item as
@@ -90,7 +109,6 @@ export async function openDroppedItem(
 }
 
 export async function openRecentLocal(handleKey: string, name: string): Promise<void> {
-  if (!confirmDiscard()) return
   const handle = await loadHandle(handleKey)
   if (!handle) {
     toast.error(`${name} is no longer available.`)
@@ -104,10 +122,21 @@ export async function openRecentLocal(handleKey: string, name: string): Promise<
   }
 }
 
+export function startNewDocument(source?: string) {
+  replaceDocument(() => useDocumentStore.getState().newDocument({ source }), 'New diagram')
+}
+
+// ---------------------------------------------------------------------------------------------
+// Saving
+
 function suggestedFileName(): string {
   const { doc } = useDocumentStore.getState()
   if (doc.fileName) return doc.fileName
   return `${documentBaseName(null)}.mmd`
+}
+
+function providerFor(destination: SaveDestination): StorageProvider {
+  return destination === 'drive' ? driveProvider : getLocalProvider()
 }
 
 function recordSave(result: SaveResult) {
@@ -119,30 +148,57 @@ function recordSave(result: SaveResult) {
   toast.info(`Saved ${result.name}${result.origin.kind === 'drive' ? ' to Google Drive' : ''}`)
 }
 
-export async function saveDocumentAs(
-  provider: StorageProvider = getLocalProvider(),
+/**
+ * Begin "Save as". Providers with their own picker (File System Access) go straight there;
+ * the others open the in-app save panel for a name and, on Drive, a folder.
+ */
+export async function startSaveAs(
+  destination: SaveDestination,
+  suggestedName = suggestedFileName(),
+): Promise<void> {
+  const provider = providerFor(destination)
+  if (!provider.needsSaveTarget) {
+    await performSaveAs(destination, { name: suggestedName })
+    return
+  }
+  useSaveUiStore.getState().show(destination, suggestedName)
+}
+
+/** Write a new file to the chosen destination. Called by the save panel or directly for FSA. */
+export async function performSaveAs(
+  destination: SaveDestination,
+  target: SaveTarget,
 ): Promise<boolean> {
+  const provider = providerFor(destination)
+  const ui = useSaveUiStore.getState()
   const { doc } = useDocumentStore.getState()
+  ui.setBusy(true)
   try {
-    const result = await provider.saveAs(
-      serializeForFile(doc.source, doc.markdown),
-      suggestedFileName(),
-    )
-    if (!result) return false
+    const result = await provider.saveAs(serializeForFile(doc.source, doc.markdown), target)
+    if (!result) {
+      ui.setBusy(false)
+      return false
+    }
     recordSave(result)
+    ui.hide()
     return true
   } catch (e) {
-    toast.error(`Could not save: ${describe(e)}`)
+    const message = `Could not save: ${describe(e)}`
+    if (useSaveUiStore.getState().open) ui.setError(message)
+    else toast.error(message)
     return false
   }
 }
 
-/** Save to the current origin, or fall through to Save As when there is none. */
+/** Save to the current origin, or start Save as when there is none. */
 export async function saveDocument(): Promise<boolean> {
   const { doc } = useDocumentStore.getState()
   if (doc.origin?.kind === 'drive') return saveToDrive()
   const provider = getLocalProvider()
-  if (!doc.origin || doc.origin.kind !== 'local') return saveDocumentAs(provider)
+  if (!doc.origin || doc.origin.kind !== 'local') {
+    await startSaveAs('local')
+    return false
+  }
   if (doc.origin.handleKey === null) {
     // Download fallback: every save is a fresh download of the same name.
     await provider.save(
@@ -164,7 +220,8 @@ export async function saveDocument(): Promise<boolean> {
   } catch (e) {
     if (e instanceof NoHandleError) {
       toast.warn('The original file is no longer reachable. Choose where to save it.')
-      return saveDocumentAs(provider)
+      await startSaveAs('local')
+      return false
     }
     toast.error(`Could not save: ${describe(e)}`)
     return false
@@ -179,7 +236,6 @@ export async function openFromDrive(): Promise<void> {
 }
 
 export async function openDriveFile(fileId: string, name = 'the file'): Promise<void> {
-  if (!confirmDiscard()) return
   try {
     loadOpenedFile(await openDriveFileById(fileId))
   } catch (e) {
@@ -188,14 +244,18 @@ export async function openDriveFile(fileId: string, name = 'the file'): Promise<
   }
 }
 
-export async function saveAsToDrive(): Promise<boolean> {
-  return saveDocumentAs(driveProvider)
+function copyName(name: string): string {
+  const m = /^(.*?)(\.[^.]+)?$/.exec(name)
+  return `${m?.[1] ?? name} (copy)${m?.[2] ?? ''}`
 }
 
 /** Save to the Drive origin, warning first when the remote copy changed since we opened it. */
 export async function saveToDrive(): Promise<boolean> {
   const { doc } = useDocumentStore.getState()
-  if (doc.origin?.kind !== 'drive') return saveAsToDrive()
+  if (doc.origin?.kind !== 'drive') {
+    await startSaveAs('drive')
+    return false
+  }
   try {
     const conflict = await driveProvider.checkConflict?.(doc.origin)
     if (conflict) {
@@ -208,7 +268,10 @@ export async function saveToDrive(): Promise<boolean> {
         ],
       })
       if (choice === null) return false
-      if (choice === 'copy') return saveAsToDrive()
+      if (choice === 'copy') {
+        await startSaveAs('drive', copyName(doc.fileName ?? suggestedFileName()))
+        return false
+      }
     }
     const result = await driveProvider.save(
       doc.origin,

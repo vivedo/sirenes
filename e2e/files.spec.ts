@@ -153,4 +153,13 @@ test('without the File System Access API, open uses a file input and save downlo
   const download = page.waitForEvent('download')
   await page.keyboard.press('ControlOrMeta+S')
   expect((await download).suggestedFilename()).toBe('legacy.mmd')
+
+  // Save as without FSA uses the in-app panel, not window.prompt.
+  await page.keyboard.press('ControlOrMeta+Shift+S')
+  await expect(page.getByTestId('save-panel')).toBeVisible()
+  await page.getByTestId('save-name').fill('renamed-legacy.mmd')
+  const download2 = page.waitForEvent('download')
+  await page.getByTestId('save-submit').click()
+  expect((await download2).suggestedFilename()).toBe('renamed-legacy.mmd')
+  await expect(page.getByTestId('toolbar-title')).toContainText('renamed-legacy.mmd')
 })

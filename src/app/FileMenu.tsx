@@ -5,9 +5,8 @@ import {
   openFile,
   openFromDrive,
   openRecentLocal,
-  saveAsToDrive,
   saveDocument,
-  saveDocumentAs,
+  startSaveAs,
 } from '../documents/actions'
 import { signOut, useDriveStore } from '../storage/drive'
 import { Icon } from '../shared/Icon'
@@ -54,7 +53,7 @@ export function FileMenu() {
             hint={`${modKey} O`}
             testId="file-open"
           >
-            Open…
+            Open
           </MenuItem>
           <MenuItem
             onClick={() => {
@@ -69,13 +68,13 @@ export function FileMenu() {
           </MenuItem>
           <MenuItem
             onClick={() => {
-              void saveDocumentAs()
+              void startSaveAs('local')
               close()
             }}
             hint={`${modKey} ⇧ S`}
             testId="file-save-as"
           >
-            Save as…
+            Save as
           </MenuItem>
           {fsa && (
             <MenuItem
@@ -96,17 +95,17 @@ export function FileMenu() {
             disabled={!driveOk}
             testId="drive-open"
           >
-            <Icon name="cloud" /> Open from Google Drive…
+            <Icon name="cloud" /> Open from Google Drive
           </MenuItem>
           <MenuItem
             onClick={() => {
-              void saveAsToDrive()
+              void startSaveAs('drive')
               close()
             }}
             disabled={!driveOk}
             testId="drive-save-as"
           >
-            <Icon name="cloud" /> Save to Google Drive…
+            <Icon name="cloud" /> Save to Google Drive
           </MenuItem>
           {driveSignedIn && (
             <MenuItem

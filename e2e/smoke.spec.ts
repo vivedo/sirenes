@@ -194,3 +194,33 @@ test('going offline flags the status bar and disables Drive and AI sending', asy
   await page.evaluate(() => window.dispatchEvent(new Event('online')))
   await expect(page.getByTestId('status-offline')).toHaveCount(0)
 })
+
+test('replacing a dirty diagram offers Undo instead of a confirmation dialog', async ({ page }) => {
+  await page.goto('/')
+  let dialogs = 0
+  page.on('dialog', (d) => {
+    dialogs++
+    void d.dismiss()
+  })
+  await page.locator('.cm-content').first().click()
+  await page.keyboard.press('ControlOrMeta+A')
+  await page.keyboard.type('pie\n"precious": 1')
+  await page.getByTestId('menu-new').click()
+  await page.getByTestId('template-sequence').click()
+  await expect(page.locator('.cm-content').first()).toContainText('sequenceDiagram')
+  const undo = page.getByTestId('toast-action')
+  await expect(undo).toHaveText('Undo')
+  await undo.click()
+  await expect(page.locator('.cm-content').first()).toContainText('precious')
+  expect(dialogs).toBe(0)
+})
+
+test('file menu items do not wrap', async ({ page }) => {
+  await page.goto('/')
+  await page.getByTestId('menu-file').click()
+  const item = page.getByTestId('drive-open')
+  await expect(item).toHaveText(/Open from Google Drive$/)
+  const box = (await item.boundingBox())!
+  const lineHeight = await item.evaluate((el) => parseFloat(getComputedStyle(el).lineHeight))
+  expect(box.height).toBeLessThan(lineHeight * 2)
+})

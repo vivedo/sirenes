@@ -93,10 +93,15 @@ export async function createFile(
   name: string,
   content: string,
   token: string,
+  folderId: string | null = null,
   fetchImpl: typeof fetch = fetch,
 ): Promise<DriveFileMeta> {
   const boundary = 'sirenes-' + Math.random().toString(36).slice(2)
-  const metadata = JSON.stringify({ name, mimeType: mimeFor(name) })
+  const metadata = JSON.stringify({
+    name,
+    mimeType: mimeFor(name),
+    ...(folderId ? { parents: [folderId] } : {}),
+  })
   const body =
     `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${metadata}\r\n` +
     `--${boundary}\r\nContent-Type: ${mimeFor(name)}; charset=UTF-8\r\n\r\n${content}\r\n` +
