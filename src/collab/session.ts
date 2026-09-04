@@ -38,6 +38,22 @@ export interface SessionOptions {
 }
 
 const PROTOCOL_VERSION = 1
+
+/**
+ * Bytes arrive in whatever shape the transport's serialiser produced: PeerJS's binarypack turns a
+ * Uint8Array into an ArrayBuffer, JSON-ish paths turn it into an array or an index-keyed object.
+ * Yjs's decoder needs a real Uint8Array.
+ */
+export function toBytes(value: unknown): Uint8Array {
+  if (value instanceof Uint8Array) return value
+  if (value instanceof ArrayBuffer) return new Uint8Array(value)
+  if (ArrayBuffer.isView(value))
+    return new Uint8Array(value.buffer, value.byteOffset, value.byteLength)
+  if (Array.isArray(value)) return Uint8Array.from(value as number[])
+  if (value && typeof value === 'object')
+    return Uint8Array.from(Object.values(value as Record<string, number>))
+  throw new Error('Malformed binary payload')
+}
 const RECONNECT_WINDOW_MS = 30_000
 const RECONNECT_INTERVAL_MS = 2_000
 
@@ -252,6 +268,15 @@ export class CollabSession {
   // -------------------------------------------------------------- protocol
 
   private onMessage(link: PeerLink, m: WireMessage) {
+    try {
+      this.handleMessage(link, m)
+    } catch (e) {
+      // A malformed message from one peer must not take the whole session down.
+      console.warn('[collab] dropped message', m?.t, e)
+    }
+  }
+
+  private handleMessage(link: PeerLink, m: WireMessage) {
     switch (m.t) {
       case 'hello': {
         if (this.role !== 'host') return
@@ -287,16 +312,16 @@ export class CollabSession {
         break
       }
       case 'step1':
-        link.send({ t: 'step2', update: Y.encodeStateAsUpdate(this.ydoc, m.sv) })
+        link.send({ t: 'step2', update: Y.encodeStateAsUpdate(this.ydoc, toBytes(m.sv)) })
         break
       case 'step2':
       case 'update':
         if (this.role === 'host' && !this.canEdit && m.t === 'update') return // read-only guests
-        Y.applyUpdate(this.ydoc, m.update, link)
+        Y.applyUpdate(this.ydoc, toBytes(m.update), link)
         if (this.role === 'guest' && this.status !== 'connected') this.setStatus('connected')
         break
       case 'awareness':
-        applyAwarenessUpdate(this.awareness, m.update, link)
+        applyAwarenessUpdate(this.awareness, toBytes(m.update), link)
         break
       case 'perm':
         if (this.role !== 'guest') return

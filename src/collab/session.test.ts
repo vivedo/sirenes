@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import * as Y from 'yjs'
-import { CollabSession } from './session'
+import { CollabSession, toBytes } from './session'
 import { createFakeTransport } from './fakeTransport'
 
 const tick = (ms = 20) => new Promise((r) => setTimeout(r, ms))
@@ -159,5 +159,17 @@ describe('CollabSession', () => {
         .map((p) => p.name)
         .sort(),
     ).toEqual(['Guest 2', 'Host'])
+  })
+})
+
+describe('toBytes', () => {
+  it('accepts every shape a transport may deliver', () => {
+    const src = new Uint8Array([1, 2, 3])
+    expect(toBytes(src)).toBe(src)
+    expect(toBytes(src.buffer.slice(0))).toEqual(src)
+    expect(toBytes(new DataView(src.buffer.slice(0)))).toEqual(src)
+    expect(toBytes([1, 2, 3])).toEqual(src)
+    expect(toBytes({ 0: 1, 1: 2, 2: 3 })).toEqual(src)
+    expect(() => toBytes('nope')).toThrow(/Malformed/)
   })
 })
