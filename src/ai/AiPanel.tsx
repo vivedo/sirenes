@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAiStore } from './aiStore'
 import { useAiSettingsStore } from './aiSettingsStore'
 import { useSettingsStore } from '../store/settingsStore'
@@ -14,6 +14,9 @@ import './ai.css'
 
 export function AiPanel() {
   const toggle = useSettingsStore((s) => s.toggleAiPanel)
+  const width = useSettingsStore((s) => s.aiPanelWidth)
+  const setWidth = useSettingsStore((s) => s.setAiPanelWidth)
+  const panel = useRef<HTMLElement>(null)
   const keyStatus = useAiStore((s) => s.keyStatus)
   const apiKey = useAiStore((s) => s.apiKey)
   const docId = useDocumentStore((s) => s.doc.id)
@@ -33,11 +36,56 @@ export function AiPanel() {
     void loadConversation(docId)
   }, [docId, loadConversation])
 
+  const onResizeStart = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      const el = panel.current
+      if (!el) return
+      e.preventDefault()
+      e.currentTarget.setPointerCapture(e.pointerId)
+      const startX = e.clientX
+      const startWidth = el.getBoundingClientRect().width
+      const move = (ev: PointerEvent) => setWidth(startWidth + (startX - ev.clientX))
+      const up = () => {
+        window.removeEventListener('pointermove', move)
+        window.removeEventListener('pointerup', up)
+        el.classList.remove('resizing')
+      }
+      el.classList.add('resizing')
+      window.addEventListener('pointermove', move)
+      window.addEventListener('pointerup', up)
+    },
+    [setWidth],
+  )
+
+  const onResizeKey = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowLeft') setWidth(width + 16)
+    if (e.key === 'ArrowRight') setWidth(width - 16)
+  }
+
   const hasKey = apiKey !== null && keyStatus !== 'invalid'
   const review = reviewId ? messages.find((m) => m.id === reviewId) : undefined
 
   return (
-    <aside className="ai-panel" aria-label="AI assistant" data-testid="ai-panel">
+    <aside
+      className="ai-panel"
+      aria-label="AI assistant"
+      data-testid="ai-panel"
+      ref={panel}
+      style={{ width }}
+    >
+      <div
+        className="ai-panel-resizer"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize AI panel"
+        aria-valuenow={width}
+        tabIndex={0}
+        onPointerDown={onResizeStart}
+        onKeyDown={onResizeKey}
+        onDoubleClick={() => setWidth(360)}
+        title="Drag to resize, double-click to reset"
+        data-testid="ai-panel-resizer"
+      />
       <div className="ai-panel-header">
         <span>
           <Icon name="sparkle" /> AI assistant

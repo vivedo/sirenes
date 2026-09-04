@@ -8,37 +8,45 @@ export interface Transform {
 
 const MIN_SCALE = 0.1
 const MAX_SCALE = 8
+const clampScale = (s: number) => Math.min(MAX_SCALE, Math.max(MIN_SCALE, s))
 
-export function usePanZoom(container: React.RefObject<HTMLElement | null>) {
+/**
+ * Pan/zoom state for the preview viewport. The viewport element is tracked through a callback
+ * ref so listeners follow it when the element is recreated (e.g. after leaving ASCII mode), and a
+ * ResizeObserver re-fits the diagram whenever the viewport changes size.
+ */
+export function usePanZoom() {
   const [transform, setTransform] = useState<Transform>({ x: 0, y: 0, scale: 1 })
+  const [el, setEl] = useState<HTMLDivElement | null>(null)
+  const elRef = useRef<HTMLDivElement | null>(null)
+  const viewportRef = useCallback((node: HTMLDivElement | null) => {
+    elRef.current = node
+    setEl(node)
+  }, [])
   const contentSize = useRef<{ width: number; height: number } | null>(null)
   const drag = useRef<{ startX: number; startY: number; originX: number; originY: number } | null>(
     null,
   )
 
-  const clampScale = (s: number) => Math.min(MAX_SCALE, Math.max(MIN_SCALE, s))
-
-  const zoomAt = useCallback(
-    (factor: number, cx?: number, cy?: number) => {
-      const el = container.current
-      setTransform((t) => {
-        const scale = clampScale(t.scale * factor)
-        if (!el) return { ...t, scale }
-        const rect = el.getBoundingClientRect()
-        const px = cx ?? rect.width / 2
-        const py = cy ?? rect.height / 2
-        const ratio = scale / t.scale
-        return { scale, x: px - (px - t.x) * ratio, y: py - (py - t.y) * ratio }
-      })
-    },
-    [container],
-  )
+  const zoomAt = useCallback((factor: number, cx?: number, cy?: number) => {
+    const node = elRef.current
+    setTransform((t) => {
+      const scale = clampScale(t.scale * factor)
+      if (!node) return { ...t, scale }
+      const rect = node.getBoundingClientRect()
+      const px = cx ?? rect.width / 2
+      const py = cy ?? rect.height / 2
+      const ratio = scale / t.scale
+      return { scale, x: px - (px - t.x) * ratio, y: py - (py - t.y) * ratio }
+    })
+  }, [])
 
   const fit = useCallback(() => {
-    const el = container.current
+    const node = elRef.current
     const size = contentSize.current
-    if (!el || !size) return
-    const rect = el.getBoundingClientRect()
+    if (!node || !size) return
+    const rect = node.getBoundingClientRect()
+    if (rect.width === 0 || rect.height === 0) return // not laid out yet; the observer will call again
     const pad = 24
     const scale = clampScale(
       Math.min((rect.width - pad * 2) / size.width, (rect.height - pad * 2) / size.height, 4),
@@ -48,20 +56,19 @@ export function usePanZoom(container: React.RefObject<HTMLElement | null>) {
       x: (rect.width - size.width * scale) / 2,
       y: (rect.height - size.height * scale) / 2,
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- refs are stable
   }, [])
 
   const reset = useCallback(() => {
-    const el = container.current
+    const node = elRef.current
     const size = contentSize.current
-    if (!el || !size) return setTransform({ x: 0, y: 0, scale: 1 })
-    const rect = el.getBoundingClientRect()
+    if (!node || !size) return setTransform({ x: 0, y: 0, scale: 1 })
+    const rect = node.getBoundingClientRect()
     setTransform({
       scale: 1,
       x: (rect.width - size.width) / 2,
       y: Math.max(24, (rect.height - size.height) / 2),
     })
-  }, [container])
+  }, [])
 
   /** Called by the preview after each render with the new intrinsic size. */
   const setContentSize = useCallback(
@@ -74,7 +81,6 @@ export function usePanZoom(container: React.RefObject<HTMLElement | null>) {
   )
 
   useEffect(() => {
-    const el = container.current
     if (!el) return
 
     const onWheel = (e: WheelEvent) => {
@@ -115,18 +121,35 @@ export function usePanZoom(container: React.RefObject<HTMLElement | null>) {
     el.addEventListener('pointermove', onPointerMove)
     el.addEventListener('pointerup', onPointerUp)
     el.addEventListener('pointercancel', onPointerUp)
+
+    // Re-fit when the viewport is first laid out or changes size (layout switch, AI panel, window).
+    let lastW = 0
+    let lastH = 0
+    const observer =
+      typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver((entries) => {
+            const { width, height } = entries[0].contentRect
+            if (width === lastW && height === lastH) return
+            lastW = width
+            lastH = height
+            fit()
+          })
+        : null
+    observer?.observe(el)
+
     return () => {
       el.removeEventListener('wheel', onWheel)
       el.removeEventListener('pointerdown', onPointerDown)
       el.removeEventListener('pointermove', onPointerMove)
       el.removeEventListener('pointerup', onPointerUp)
       el.removeEventListener('pointercancel', onPointerUp)
+      observer?.disconnect()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- refs are stable
-  }, [zoomAt])
+  }, [el, zoomAt, fit])
 
   return {
     transform,
+    viewportRef,
     zoomIn: () => zoomAt(1.25),
     zoomOut: () => zoomAt(0.8),
     fit,

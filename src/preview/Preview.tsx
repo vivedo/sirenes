@@ -21,9 +21,8 @@ export function Preview() {
   const asciiPlain = useSettingsStore((s) => s.asciiPlain)
   const setAsciiPlain = useSettingsStore((s) => s.setAsciiPlain)
 
-  const viewport = useRef<HTMLDivElement>(null)
   const canvas = useRef<HTMLDivElement>(null)
-  const { transform, zoomIn, zoomOut, fit, reset, setContentSize } = usePanZoom(viewport)
+  const { transform, viewportRef, zoomIn, zoomOut, fit, reset, setContentSize } = usePanZoom()
   const lastDocId = useRef(docId)
 
   // Inject the SVG string. Mermaid ran with securityLevel 'strict', and the container is inert.
@@ -46,7 +45,8 @@ export function Preview() {
     } else {
       setContentSize(null, false)
     }
-  }, [svg, docId, setContentSize, fit])
+    // previewMode is a dependency because leaving ASCII mode recreates the canvas element.
+  }, [svg, docId, previewMode, setContentSize, fit])
 
   // Zoom by resizing the SVG itself rather than CSS-scaling a rasterised layer, so the vector is
   // redrawn crisp at every zoom level. The wrapper transform only pans.
@@ -58,7 +58,7 @@ export function Preview() {
     if (!w || !h) return
     svgEl.setAttribute('width', String(w * transform.scale))
     svgEl.setAttribute('height', String(h * transform.scale))
-  }, [svg, transform.scale])
+  }, [svg, previewMode, transform.scale])
 
   const empty = source.trim() === ''
   const asciiOk = empty || isBeautifulSupported(source)
@@ -128,7 +128,7 @@ export function Preview() {
 
   return (
     <div className="preview" data-testid="preview">
-      <div className="preview-viewport" ref={viewport}>
+      <div className="preview-viewport" ref={viewportRef}>
         <div
           className="preview-canvas"
           ref={canvas}

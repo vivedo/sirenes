@@ -102,6 +102,20 @@
   overflow: hidden;
 }
 
+/* Hidden panes leave the grid flow, so pin each pane to its column or the preview would land in
+   the zero-width first column when the editor is hidden. */
+.split-left {
+  grid-column: 1;
+}
+
+.split-divider {
+  grid-column: 2;
+}
+
+.split-right {
+  grid-column: 3;
+}
+
 .split-divider {
   background: var(--border);
   cursor: col-resize;
@@ -130,12 +144,41 @@
 }
 
 .ai-panel {
+  position: relative;
   width: 360px;
+  min-width: 0;
+  max-width: 60vw;
   flex: none;
   border-left: 1px solid var(--border);
   background: var(--bg-elevated);
   display: flex;
   flex-direction: column;
+}
+
+.ai-panel-resizer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -4px;
+  width: 8px;
+  cursor: col-resize;
+  z-index: 5;
+}
+
+.ai-panel-resizer:hover,
+.ai-panel.resizing .ai-panel-resizer {
+  background: var(--accent);
+  opacity: 0.6;
+}
+
+.ai-panel.resizing {
+  user-select: none;
+}
+
+.ai-panel.resizing ~ *,
+.workspace:has(.ai-panel.resizing) .preview-viewport,
+.workspace:has(.ai-panel.resizing) .cm-editor {
+  pointer-events: none;
 }
 
 .ai-panel-header {
@@ -245,8 +288,5 @@
 @media (max-width: 900px) {
   .toolbar-title {
     display: none;
-  }
-  .ai-panel {
-    width: 300px;
   }
 }

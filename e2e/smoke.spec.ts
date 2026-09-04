@@ -117,3 +117,39 @@ test('templates load and render without errors', async ({ page }) => {
     await expect(page.locator('.preview-canvas svg')).toBeVisible()
   }
 })
+
+test('diagram survives switching preview modes and layouts', async ({ page }) => {
+  await page.goto('/')
+  const svg = page.locator('.preview-canvas svg')
+  await expect(svg).toBeVisible()
+
+  await page.getByTestId('preview-mode-ascii').click()
+  await expect(page.getByTestId('preview-ascii')).toBeVisible()
+  await page.getByTestId('preview-mode-svg').click()
+  await expect(svg).toBeVisible()
+  await expect(svg).toBeInViewport()
+
+  await page.getByTestId('layout-preview').click()
+  await expect(svg).toBeVisible()
+  await expect(svg).toBeInViewport()
+  await page.getByTestId('layout-editor').click()
+  await page.getByTestId('layout-split').click()
+  await expect(svg).toBeVisible()
+  await expect(svg).toBeInViewport()
+
+  // Opening the AI panel narrows the preview; the diagram must stay in view.
+  await page.getByTestId('toggle-ai').click()
+  await expect(svg).toBeInViewport()
+})
+
+test('view-only link shows the diagram', async ({ page }) => {
+  await page.goto('/')
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
+  await page.getByTestId('menu-share').click()
+  await page.getByTestId('copy-view-link').click()
+  const url = await page.evaluate(() => navigator.clipboard.readText())
+  await page.goto(url)
+  const svg = page.locator('.preview-canvas svg')
+  await expect(svg).toBeVisible()
+  await expect(svg).toBeInViewport()
+})

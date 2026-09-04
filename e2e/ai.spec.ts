@@ -133,3 +133,38 @@ test('session-only key is not persisted to localStorage', async ({ page }) => {
   await expect(page.getByTestId('ai-key-input')).toBeVisible()
   expect(await page.evaluate(() => sessionStorage.getItem('sirenes:openrouter-key'))).toBeNull()
 })
+
+test('AI panel width can be dragged, is clamped, persists, and resets on double-click', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await page.getByTestId('toggle-ai').click()
+  const panel = page.getByTestId('ai-panel')
+  const resizer = page.getByTestId('ai-panel-resizer')
+  const before = (await panel.boundingBox())!
+  expect(Math.round(before.width)).toBe(360)
+
+  const box = (await resizer.boundingBox())!
+  const x = box.x + box.width / 2
+  const y = box.y + 200
+  await page.mouse.move(x, y)
+  await page.mouse.down()
+  await page.mouse.move(x - 150, y, { steps: 5 })
+  await page.mouse.up()
+  const after = (await panel.boundingBox())!
+  expect(Math.round(after.width)).toBe(510)
+
+  await page.reload()
+  await expect(panel).toBeVisible()
+  expect(Math.round((await panel.boundingBox())!.width)).toBe(510)
+
+  // Cannot shrink below the minimum.
+  await page.mouse.move(x - 150, y)
+  await page.mouse.down()
+  await page.mouse.move(x + 600, y, { steps: 5 })
+  await page.mouse.up()
+  expect(Math.round((await panel.boundingBox())!.width)).toBe(280)
+
+  await resizer.dblclick()
+  expect(Math.round((await panel.boundingBox())!.width)).toBe(360)
+})
