@@ -15,6 +15,7 @@ export function LivePanel() {
     sessionId,
     title,
     canEdit,
+    aiEnabled,
     participants,
     error,
     myName,
@@ -25,6 +26,7 @@ export function LivePanel() {
   const leave = useCollabStore((s) => s.leave)
   const setTitle = useCollabStore((s) => s.setTitle)
   const setCanEdit = useCollabStore((s) => s.setCanEdit)
+  const setAiEnabled = useCollabStore((s) => s.setAiEnabled)
   const setMyName = useCollabStore((s) => s.setMyName)
   const root = useRef<HTMLDivElement>(null)
 
@@ -32,7 +34,10 @@ export function LivePanel() {
     if (!panelOpen) return
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setPanelOpen(false)
     const onDown = (e: PointerEvent) => {
-      if (root.current && !root.current.contains(e.target as Node)) setPanelOpen(false)
+      const target = e.target as HTMLElement
+      // The toolbar strip toggles the panel itself; do not close-then-reopen on its click.
+      if (target.closest?.('.live-strip')) return
+      if (root.current && !root.current.contains(target)) setPanelOpen(false)
     }
     document.addEventListener('keydown', onKey)
     document.addEventListener('pointerdown', onDown)
@@ -127,6 +132,15 @@ export function LivePanel() {
                   data-testid="live-can-edit"
                 />
                 Guests can edit
+              </label>
+              <label className="ai-check">
+                <input
+                  type="checkbox"
+                  checked={aiEnabled}
+                  onChange={(e) => setAiEnabled(e.target.checked)}
+                  data-testid="live-ai-enabled"
+                />
+                Guests can use my AI assistant
               </label>
             </>
           )}

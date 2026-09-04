@@ -1,14 +1,26 @@
 import { useEffect, useRef } from 'react'
-import { useAiStore } from './aiStore'
 import { stripMermaidBlocks } from './proposal'
 import { formatUsage } from './format'
-import { applySourceEdit } from '../editor/applySourceEdit'
 import type { AiMessage } from './types'
-import { toast } from '../store/toastStore'
 
-export function MessageList() {
-  const messages = useAiStore((s) => s.messages)
-  const streaming = useAiStore((s) => s.streaming)
+export interface MessageActions {
+  /** Whether Accept is available (guests need edit permission). */
+  canApply: boolean
+  onReview: (messageId: string) => void
+  onAccept: (messageId: string) => void
+  onReject: (messageId: string) => void
+}
+
+interface Props {
+  messages: AiMessage[]
+  streaming: boolean
+  actions: MessageActions
+  /** Show author names on user messages (live sessions). */
+  showAuthors?: boolean
+  emptyHint?: string
+}
+
+export function MessageList({ messages, streaming, actions, showAuthors, emptyHint }: Props) {
   const bottom = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -18,34 +30,50 @@ export function MessageList() {
   if (messages.length === 0) {
     return (
       <div className="ai-empty ai-muted">
-        Ask for a change (“add a retry loop after the API call”), describe a diagram to create, or
-        use a preset below. Proposals show as a diff you can accept or reject.
+        {emptyHint ??
+          'Ask for a change (“add a retry loop after the API call”), describe a diagram to create, or use a preset below. Proposals show as a diff you can accept or reject.'}
       </div>
     )
   }
 
+  const lastId = messages[messages.length - 1]?.id
   return (
     <div className="ai-messages" data-testid="ai-messages">
       {messages.map((m) => (
-        <MessageItem key={m.id} message={m} />
+        <MessageItem
+          key={m.id}
+          message={m}
+          busy={streaming && m.id === lastId && m.role === 'assistant'}
+          actions={actions}
+          showAuthor={Boolean(showAuthors)}
+        />
       ))}
       <div ref={bottom} />
     </div>
   )
 }
 
-function MessageItem({ message: m }: { message: AiMessage }) {
-  const streaming = useAiStore((s) => s.streaming)
-  const isLast = useAiStore((s) => s.messages[s.messages.length - 1]?.id === m.id)
-  const applyProposal = useAiStore((s) => s.applyProposal)
-  const rejectProposal = useAiStore((s) => s.rejectProposal)
-  const openReview = useAiStore((s) => s.openReview)
-
-  const busy = streaming && isLast && m.role === 'assistant'
+function MessageItem({
+  message: m,
+  busy,
+  actions,
+  showAuthor,
+}: {
+  message: AiMessage
+  busy: boolean
+  actions: MessageActions
+  showAuthor: boolean
+}) {
   const text = m.role === 'assistant' && m.proposal ? stripMermaidBlocks(m.content) : m.content
+  const lines = m.proposal?.code.split('\n') ?? []
 
   return (
     <div className={`ai-msg ai-msg-${m.role}`} data-testid={`ai-msg-${m.role}`}>
+      {showAuthor && m.role === 'user' && (
+        <div className="ai-msg-author ai-muted" data-testid="ai-msg-author">
+          {m.author ?? 'Host'}
+        </div>
+      )}
       {(text || busy) && (
         <div className="ai-msg-body">
           {text}
@@ -68,7 +96,7 @@ function MessageItem({ message: m }: { message: AiMessage }) {
         >
           <div className="ai-proposal-head">
             {m.proposal.applied ? (
-              <span className="ai-ok">Applied</span>
+              <span className="ai-ok">Applied{m.appliedBy ? ` by ${m.appliedBy}` : ''}</span>
             ) : m.proposal.error ? (
               <span className="ai-warn">
                 Proposal has a syntax error
@@ -79,23 +107,22 @@ function MessageItem({ message: m }: { message: AiMessage }) {
             )}
           </div>
           <pre className="ai-proposal-code">
-            {m.proposal.code.split('\n').slice(0, 8).join('\n')}
-            {m.proposal.code.split('\n').length > 8 ? '\n…' : ''}
+            {lines.slice(0, 8).join('\n')}
+            {lines.length > 8 ? '\n…' : ''}
           </pre>
           {!m.proposal.applied && (
             <div className="ai-proposal-actions">
-              <button onClick={() => openReview(m.id)} data-testid="ai-review">
+              <button onClick={() => actions.onReview(m.id)} data-testid="ai-review">
                 Review diff
               </button>
-              <button onClick={() => rejectProposal(m.id)} data-testid="ai-reject">
+              <button onClick={() => actions.onReject(m.id)} data-testid="ai-reject">
                 Reject
               </button>
               <button
                 className="primary"
-                onClick={() => {
-                  applyProposal(m.id, applySourceEdit)
-                  toast.info('Applied. Undo with ⌘/Ctrl+Z.')
-                }}
+                onClick={() => actions.onAccept(m.id)}
+                disabled={!actions.canApply}
+                title={actions.canApply ? undefined : 'The host has made the diagram read-only'}
                 data-testid="ai-accept"
               >
                 Accept

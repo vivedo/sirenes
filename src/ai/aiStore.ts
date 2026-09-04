@@ -6,6 +6,7 @@ import { buildMessages, type PromptMode } from './prompt'
 import { extractMermaidBlock } from './proposal'
 import { readHistory, writeHistory } from './history'
 import type { AiMessage, KeyStatus } from './types'
+import type { SharedAiState } from '../collab/session'
 import { useAiSettingsStore } from './aiSettingsStore'
 import { useDocumentStore } from '../store/documentStore'
 import { validateMermaid } from '../preview/renderer'
@@ -30,6 +31,8 @@ interface AiStore {
   abort: AbortController | null
 
   reviewMessageId: string | null
+  /** Guest in a live session: mirror of the host's assistant. null otherwise. */
+  remote: SharedAiState | null
 
   // key
   loadKeyFromStorage: () => void
@@ -39,12 +42,13 @@ interface AiStore {
   ensureModels: () => Promise<void>
   // conversation
   loadConversation: (docId: string) => Promise<void>
-  send: (request: string, mode?: PromptMode) => Promise<void>
+  send: (request: string, mode?: PromptMode, author?: string) => Promise<void>
   cancel: () => void
   clearConversation: () => void
-  applyProposal: (messageId: string, apply: (code: string) => void) => void
+  applyProposal: (messageId: string, apply: (code: string) => void, appliedBy?: string) => void
   rejectProposal: (messageId: string) => void
   openReview: (messageId: string | null) => void
+  setRemote: (remote: SharedAiState | null) => void
 }
 
 /** Write history now. Streaming deltas are not persisted; only completed turns are. */
@@ -67,6 +71,7 @@ export const useAiStore = create<AiStore>((set, get) => ({
   streaming: false,
   abort: null,
   reviewMessageId: null,
+  remote: null,
 
   loadKeyFromStorage: () => {
     const stored = readApiKey()
@@ -134,7 +139,7 @@ export const useAiStore = create<AiStore>((set, get) => ({
     set({ conversationDocId: docId, messages: loaded, reviewMessageId: null })
   },
 
-  send: async (request, mode = 'edit') => {
+  send: async (request, mode = 'edit', author) => {
     const state = get()
     if (state.streaming || !state.apiKey || !request.trim()) return
     const doc = useDocumentStore.getState().doc
@@ -146,6 +151,7 @@ export const useAiStore = create<AiStore>((set, get) => ({
       role: 'user',
       content: request.trim(),
       createdAt: Date.now(),
+      ...(author ? { author } : {}),
     }
     const assistantMsg: AiMessage = {
       id: newId(),
@@ -219,14 +225,20 @@ export const useAiStore = create<AiStore>((set, get) => ({
     if (docId) persistHistory(docId, [])
   },
 
-  applyProposal: (messageId, apply) => {
+  applyProposal: (messageId, apply, appliedBy) => {
     const msg = get().messages.find((m) => m.id === messageId)
-    if (!msg?.proposal) return
+    if (!msg?.proposal || msg.proposal.applied) return
     apply(msg.proposal.code)
     set((s) => ({
       reviewMessageId: null,
       messages: s.messages.map((m) =>
-        m.id === messageId && m.proposal ? { ...m, proposal: { ...m.proposal, applied: true } } : m,
+        m.id === messageId && m.proposal
+          ? {
+              ...m,
+              proposal: { ...m.proposal, applied: true },
+              ...(appliedBy ? { appliedBy } : {}),
+            }
+          : m,
       ),
     }))
     const s = get()
@@ -243,4 +255,5 @@ export const useAiStore = create<AiStore>((set, get) => ({
   },
 
   openReview: (reviewMessageId) => set({ reviewMessageId }),
+  setRemote: (remote) => set({ remote }),
 }))

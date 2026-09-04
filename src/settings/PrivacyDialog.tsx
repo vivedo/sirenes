@@ -53,8 +53,9 @@ export function PrivacyDialog({ open, onClose }: { open: boolean; onClose: () =>
         <li>
           <strong>Live sessions</strong> send the diagram, its theme and your cursor directly to the
           other participants over an encrypted WebRTC channel. A PeerJS signalling server brokers
-          the connection and sees connection metadata, never content. Your files, Drive and AI data
-          are not part of a session.
+          the connection and sees connection metadata, never content. Your files, Drive and AI key
+          are not part of a session. If the host shares its assistant, guests' prompts and the
+          replies go through the host's OpenRouter key and are visible to everyone in the session.
         </li>
       </ul>
       <p>

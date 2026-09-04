@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Shared AI assistant in live sessions: guests use the host's assistant, one conversation for everyone, host toggle to disable.
+- The live collaboration toolbar button toggles its panel.
+
 - Live collaboration: peer-to-peer sessions over PeerJS/WebRTC with Yjs CRDT merging, named cursors, per-user undo, host controls (title, read-only, end), guest-only "Save a copy". Nothing about files, Drive or AI is shared.
 
 - Save to Google Drive into a folder chosen with the Picker; the last folder is remembered.

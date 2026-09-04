@@ -60,8 +60,9 @@ Version 1.0.0. All planned phases are implemented and covered by tests. See [CHA
 ### Live collaboration
 
 - Share → Share live starts a peer-to-peer session and gives you a `#live:` link. Guests who open it edit the diagram with you in real time, with named cursors and per-person undo. Text merges through a CRDT (Yjs); WebRTC data channels are brokered by a PeerJS signalling server and carry the content encrypted end to end.
-- Only the diagram, its theme, a session title and presence are shared. Your files, Google Drive, AI key and conversations never enter the session. Guests see a "Shared by" badge instead of your file name and can only save their own copy; you remain the owner of the original.
-- Host controls: session title, "guests can edit" toggle, end session. Guests keep a local copy when the session ends. See [docs/COLLAB.md](docs/COLLAB.md) for self-hosting the signalling server and adding a TURN relay.
+- Only the diagram, its theme, a session title and presence are shared. Your files, Google Drive and AI key never enter the session. Guests see a "Shared by" badge instead of your file name and can only save their own copy; you remain the owner of the original.
+- The AI assistant becomes one shared chat: guests type requests, you run them on your key and model, and everyone sees the same conversation with author names. Guests can accept proposals if they may edit. A toggle next to "guests can edit" turns this off.
+- Host controls: session title, "guests can edit" and "guests can use my AI assistant" toggles, end session. Guests keep a local copy when the session ends. See [docs/COLLAB.md](docs/COLLAB.md) for self-hosting the signalling server and adding a TURN relay.
 
 ### Privacy
 

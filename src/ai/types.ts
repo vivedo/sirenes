@@ -17,6 +17,10 @@ export interface AiMessage {
   usage?: Usage | null
   model?: string
   error?: string
+  /** Display name of who sent a user message, in live sessions. */
+  author?: string
+  /** Who accepted a proposal, in live sessions. */
+  appliedBy?: string
   createdAt: number
 }
 

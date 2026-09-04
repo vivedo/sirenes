@@ -10,6 +10,9 @@ import { Composer } from './Composer'
 import { DiffDialog } from './DiffDialog'
 import { applySourceEdit } from '../editor/applySourceEdit'
 import { Icon } from '../shared/Icon'
+import { useCollabStore } from '../collab/collabStore'
+import { sharedAi } from '../collab/aiBridge'
+import type { AiMessage } from './types'
 import './ai.css'
 
 export function AiPanel() {
@@ -24,6 +27,10 @@ export function AiPanel() {
   const loadConversation = useAiStore((s) => s.loadConversation)
   const clearConversation = useAiStore((s) => s.clearConversation)
   const messages = useAiStore((s) => s.messages)
+  const streaming = useAiStore((s) => s.streaming)
+  const send = useAiStore((s) => s.send)
+  const cancel = useAiStore((s) => s.cancel)
+  const remote = useAiStore((s) => s.remote)
   const reviewId = useAiStore((s) => s.reviewMessageId)
   const openReview = useAiStore((s) => s.openReview)
   const applyProposal = useAiStore((s) => s.applyProposal)
@@ -32,9 +39,14 @@ export function AiPanel() {
   const setPin = useAiSettingsStore((s) => s.setPinConversation)
   const [showSettings, setShowSettings] = useState(false)
 
+  const collabRole = useCollabStore((s) => (s.session ? s.role : null))
+  const collabCanEdit = useCollabStore((s) => s.canEdit)
+  const hostName = useCollabStore((s) => s.hostName)
+  const myName = useCollabStore((s) => s.myName)
+
   useEffect(() => {
-    void loadConversation(docId)
-  }, [docId, loadConversation])
+    if (collabRole !== 'guest') void loadConversation(docId)
+  }, [docId, loadConversation, collabRole])
 
   const onResizeStart = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
@@ -56,14 +68,49 @@ export function AiPanel() {
     },
     [setWidth],
   )
-
   const onResizeKey = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowLeft') setWidth(width + 16)
     if (e.key === 'ArrowRight') setWidth(width - 16)
   }
 
   const hasKey = apiKey !== null && keyStatus !== 'invalid'
-  const review = reviewId ? messages.find((m) => m.id === reviewId) : undefined
+  const isGuest = collabRole === 'guest' && remote !== null
+  const shownMessages: AiMessage[] = isGuest ? (remote!.messages as AiMessage[]) : messages
+  const shownStreaming = isGuest ? remote!.streaming : streaming
+  const review = reviewId ? shownMessages.find((m) => m.id === reviewId) : undefined
+
+  const actions = isGuest
+    ? {
+        canApply: collabCanEdit,
+        onReview: (id: string) => openReview(id),
+        onAccept: (id: string) => {
+          sharedAi.apply(id)
+          openReview(null)
+        },
+        onReject: (id: string) => {
+          sharedAi.reject(id)
+          openReview(null)
+        },
+      }
+    : {
+        canApply: true,
+        onReview: (id: string) => openReview(id),
+        onAccept: (id: string) =>
+          applyProposal(
+            id,
+            applySourceEdit,
+            collabRole === 'host' ? myName.trim() || 'Host' : undefined,
+          ),
+        onReject: (id: string) => rejectProposal(id),
+      }
+
+  const guestBlocked = !isGuest
+    ? null
+    : !remote!.enabled
+      ? `${hostName ?? 'The host'} has turned the shared assistant off`
+      : !remote!.hasKey
+        ? `${hostName ?? 'The host'} has not set up an AI key`
+        : null
 
   return (
     <aside
@@ -88,10 +135,10 @@ export function AiPanel() {
       />
       <div className="ai-panel-header">
         <span>
-          <Icon name="sparkle" /> AI assistant
+          <Icon name="sparkle" /> {isGuest ? 'Shared assistant' : 'AI assistant'}
         </span>
         <div className="ai-panel-header-actions">
-          {hasKey && messages.length > 0 && (
+          {!isGuest && hasKey && messages.length > 0 && (
             <button
               onClick={clearConversation}
               title="Clear conversation"
@@ -100,7 +147,7 @@ export function AiPanel() {
               <Icon name="file" />
             </button>
           )}
-          {hasKey && (
+          {!isGuest && hasKey && (
             <button
               onClick={() => setShowSettings((v) => !v)}
               aria-pressed={showSettings}
@@ -117,7 +164,27 @@ export function AiPanel() {
         </div>
       </div>
 
-      {!hasKey ? (
+      {isGuest ? (
+        <>
+          <div className="ai-toolbar ai-shared-note" data-testid="ai-shared-note">
+            <Icon name="users" size={14} /> Runs on {hostName ?? 'the host'}'s key
+            {remote!.model ? ` · ${remote!.model}` : ''}. Everyone in the session sees this chat.
+          </div>
+          <MessageList
+            messages={shownMessages}
+            streaming={shownStreaming}
+            actions={actions}
+            showAuthors
+            emptyHint="Ask the shared assistant for a change. The host runs it and everyone sees the answer."
+          />
+          <Composer
+            streaming={shownStreaming}
+            disabledReason={guestBlocked}
+            onSend={(text, mode) => sharedAi.send(text, mode)}
+            onCancel={() => sharedAi.cancel()}
+          />
+        </>
+      ) : !hasKey ? (
         <div className="ai-panel-body">
           <KeySettings />
         </div>
@@ -136,9 +203,25 @@ export function AiPanel() {
         <>
           <div className="ai-toolbar">
             <ModelSelector />
+            {collabRole === 'host' && (
+              <div className="ai-shared-note ai-muted" data-testid="ai-host-note">
+                <Icon name="users" size={12} /> Shared with your guests
+              </div>
+            )}
           </div>
-          <MessageList />
-          <Composer />
+          <MessageList
+            messages={shownMessages}
+            streaming={shownStreaming}
+            actions={actions}
+            showAuthors={collabRole === 'host'}
+          />
+          <Composer
+            streaming={shownStreaming}
+            onSend={(text, mode) =>
+              void send(text, mode, collabRole === 'host' ? myName.trim() || 'Host' : undefined)
+            }
+            onCancel={cancel}
+          />
         </>
       )}
 
@@ -147,8 +230,8 @@ export function AiPanel() {
           original={source}
           proposed={review.proposal.code}
           invalidMessage={review.proposal.error?.message ?? null}
-          onAccept={() => applyProposal(review.id, applySourceEdit)}
-          onReject={() => rejectProposal(review.id)}
+          onAccept={() => actions.onAccept(review.id)}
+          onReject={() => actions.onReject(review.id)}
           onClose={() => openReview(null)}
         />
       )}

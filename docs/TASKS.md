@@ -168,6 +168,9 @@ Design in PRD section 6.7. Host/guest star topology over PeerJS data channels, Y
 - [x] **7.7 Tests and docs.** Unit tests with the fake transport; e2e with two pages in one browser context using the BroadcastChannel fake; a documented manual check against the real PeerJS server. README section, privacy dialog updated, `docs/COLLAB.md` with self-hosting `peer` and TURN notes. CSP `connect-src` gains the signalling host (`wss:`).
       Done when: e2e covers join, edit both ways, guest Save a copy, host end.
 
+- [x] **7.8 Shared assistant.** Guest requests are forwarded to the host, executed with the host's key, and the conversation is mirrored back; author names on messages; guests accept/reject proposals through the host; host toggle "Guests can use my AI assistant". [LC-15]
+      Done when: e2e shows a guest's prompt answered on the host's key, visible on both sides, applied by the guest, and disabled by the toggle.
+
 ## Dependency notes
 
 - Phase 2 needs 1.2, 1.4, 1.8 (source, render, theme in the store).

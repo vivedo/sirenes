@@ -173,3 +173,99 @@ describe('toBytes', () => {
     expect(() => toBytes('nope')).toThrow(/Malformed/)
   })
 })
+
+describe('shared AI protocol', () => {
+  it('forwards guest requests to the host and mirrors host state to guests', async () => {
+    const { host, guests } = await hostAndGuests('graph TD', 1)
+    all.push(host, ...guests)
+    const [g] = guests
+    const requests: unknown[] = []
+    host.aiRequested.on((r) => requests.push(r))
+    const states: unknown[] = []
+    g.aiStateChanged.on((s) => states.push(s))
+
+    g.sendAiRequest({ id: 'r1', text: 'add a node', mode: 'edit', author: 'Grace' })
+    await tick(30)
+    expect(requests).toEqual([{ id: 'r1', text: 'add a node', mode: 'edit', author: 'Grace' }])
+
+    host.publishAiState({
+      enabled: true,
+      hasKey: true,
+      model: 'm',
+      streaming: true,
+      messages: [{ id: 'a' }],
+    })
+    await tick(30)
+    expect(states).toHaveLength(1)
+    expect(g.aiState?.streaming).toBe(true)
+  })
+
+  it('late joiners receive the current AI state with the welcome', async () => {
+    const host = new CollabSession({
+      role: 'host',
+      transportFactory: createFakeTransport,
+      user: user('Host'),
+      source: 'x',
+    })
+    all.push(host)
+    const id = await host.host()
+    host.publishAiState({
+      enabled: true,
+      hasKey: true,
+      model: 'm',
+      streaming: false,
+      messages: [{ id: 'old' }],
+    })
+    const g = new CollabSession({
+      role: 'guest',
+      transportFactory: createFakeTransport,
+      user: user('Late'),
+      sessionId: id,
+    })
+    all.push(g)
+    await g.join()
+    await tick(40)
+    expect(g.aiState?.messages).toEqual([{ id: 'old' }])
+  })
+
+  it('host can disable the shared assistant; guest requests are then ignored', async () => {
+    const { host, guests } = await hostAndGuests('graph TD', 1)
+    all.push(host, ...guests)
+    const [g] = guests
+    const perms: boolean[] = []
+    g.aiPermissionChanged.on((v) => perms.push(v))
+    const requests: unknown[] = []
+    host.aiRequested.on((r) => requests.push(r))
+    host.setAiEnabled(false)
+    await tick(30)
+    expect(perms).toEqual([false])
+    expect(g.aiEnabled).toBe(false)
+    // Even a misbehaving guest that sends anyway is ignored by the host.
+    g.aiEnabled = true
+    g.sendAiRequest({ id: 'r2', text: 'sneaky', mode: 'edit', author: 'G' })
+    await tick(30)
+    expect(requests).toEqual([])
+  })
+
+  it('apply requests respect the edit permission; reject does not need it', async () => {
+    const { host, guests } = await hostAndGuests('graph TD', 1)
+    all.push(host, ...guests)
+    const [g] = guests
+    const applies: unknown[] = []
+    const rejects: unknown[] = []
+    host.aiApplyRequested.on((a) => applies.push(a))
+    host.aiRejectRequested.on((r) => rejects.push(r))
+    host.setCanEdit(false)
+    await tick(30)
+    g.sendAiApply('m1', 'G')
+    g.sendAiReject('m2')
+    await tick(30)
+    expect(applies).toEqual([])
+    expect(rejects).toEqual([{ messageId: 'm2' }])
+    host.setCanEdit(true)
+    await tick(30)
+    g.sendAiApply('m1', 'G')
+    await tick(30)
+    expect(applies).toEqual([{ messageId: 'm1', author: 'G' }])
+  })
+})

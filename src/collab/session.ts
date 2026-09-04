@@ -35,6 +35,7 @@ export interface SessionOptions {
   /** Host: resume with this id. Guest: id to join. */
   sessionId?: string
   canEdit?: boolean
+  aiEnabled?: boolean
 }
 
 const PROTOCOL_VERSION = 1
@@ -57,15 +58,43 @@ export function toBytes(value: unknown): Uint8Array {
 const RECONNECT_WINDOW_MS = 30_000
 const RECONNECT_INTERVAL_MS = 2_000
 
+/** Snapshot of the host's assistant that guests mirror. Never includes the key. */
+export interface SharedAiState {
+  enabled: boolean
+  hasKey: boolean
+  model: string | null
+  streaming: boolean
+  messages: unknown[]
+}
+
+export interface AiRequest {
+  id: string
+  text: string
+  mode: 'edit' | 'explain'
+  author: string
+}
+
 interface Wire {
   hello: { t: 'hello'; v: number; user: SessionUser }
-  welcome: { t: 'welcome'; v: number; title: string; canEdit: boolean; host: SessionUser }
+  welcome: {
+    t: 'welcome'
+    v: number
+    title: string
+    canEdit: boolean
+    aiEnabled: boolean
+    host: SessionUser
+  }
   step1: { t: 'step1'; sv: Uint8Array }
   step2: { t: 'step2'; update: Uint8Array }
   update: { t: 'update'; update: Uint8Array }
   awareness: { t: 'awareness'; update: Uint8Array }
-  perm: { t: 'perm'; canEdit: boolean }
+  perm: { t: 'perm'; canEdit: boolean; aiEnabled: boolean }
   end: { t: 'end' }
+  aiState: { t: 'ai-state'; state: SharedAiState }
+  aiRequest: { t: 'ai-request'; request: AiRequest }
+  aiCancel: { t: 'ai-cancel' }
+  aiApply: { t: 'ai-apply'; messageId: string; author: string }
+  aiReject: { t: 'ai-reject'; messageId: string }
 }
 type WireMessage = Wire[keyof Wire]
 
@@ -85,12 +114,24 @@ export class CollabSession {
   status: SessionStatus = 'connecting'
   sessionId = ''
   canEdit: boolean
+  /** Host: whether guests may use the host's AI assistant. Guest: what the host allows. */
+  aiEnabled: boolean
+  /** Guest: last mirrored assistant state. Host: last state it published. */
+  aiState: SharedAiState | null = null
   hostUser: SessionUser | null = null
   error: string | null = null
 
   readonly statusChanged = new Emitter<SessionStatus>()
   readonly participantsChanged = new Emitter<Participant[]>()
   readonly permissionChanged = new Emitter<boolean>()
+  readonly aiPermissionChanged = new Emitter<boolean>()
+  /** Guest side: the host published a new assistant state. */
+  readonly aiStateChanged = new Emitter<SharedAiState>()
+  /** Host side: a guest asked the assistant something. */
+  readonly aiRequested = new Emitter<AiRequest>()
+  readonly aiCancelRequested = new Emitter<void>()
+  readonly aiApplyRequested = new Emitter<{ messageId: string; author: string }>()
+  readonly aiRejectRequested = new Emitter<{ messageId: string }>()
 
   private transport: Transport | null = null
   private links = new Map<PeerLink, Set<number>>()
@@ -106,6 +147,7 @@ export class CollabSession {
     this.user = opts.user
     this.factory = opts.transportFactory
     this.canEdit = opts.canEdit ?? true
+    this.aiEnabled = opts.aiEnabled ?? true
     // Local edits carry the ydoc's clientID as origin so the UndoManager only tracks our own.
     this.undoManager = new Y.UndoManager(this.ytext, {
       trackedOrigins: new Set([this.ydoc.clientID, null]),
@@ -211,8 +253,45 @@ export class CollabSession {
   setCanEdit(canEdit: boolean) {
     if (this.role !== 'host') return
     this.canEdit = canEdit
-    this.broadcast({ t: 'perm', canEdit }, null)
+    this.broadcast({ t: 'perm', canEdit, aiEnabled: this.aiEnabled }, null)
     this.permissionChanged.emit(canEdit)
+  }
+
+  setAiEnabled(aiEnabled: boolean) {
+    if (this.role !== 'host') return
+    this.aiEnabled = aiEnabled
+    this.broadcast({ t: 'perm', canEdit: this.canEdit, aiEnabled }, null)
+    this.aiPermissionChanged.emit(aiEnabled)
+  }
+
+  // ------------------------------------------------------------ shared AI
+
+  /** Host: publish the assistant state to every guest (and remember it for late joiners). */
+  publishAiState(state: SharedAiState) {
+    if (this.role !== 'host') return
+    this.aiState = state
+    this.broadcast({ t: 'ai-state', state }, null)
+  }
+
+  /** Guest: ask the host's assistant. */
+  sendAiRequest(request: AiRequest) {
+    if (this.role !== 'guest' || !this.aiEnabled) return
+    this.hostLink?.send({ t: 'ai-request', request } satisfies Wire['aiRequest'])
+  }
+
+  sendAiCancel() {
+    if (this.role !== 'guest') return
+    this.hostLink?.send({ t: 'ai-cancel' } satisfies Wire['aiCancel'])
+  }
+
+  sendAiApply(messageId: string, author: string) {
+    if (this.role !== 'guest') return
+    this.hostLink?.send({ t: 'ai-apply', messageId, author } satisfies Wire['aiApply'])
+  }
+
+  sendAiReject(messageId: string) {
+    if (this.role !== 'guest') return
+    this.hostLink?.send({ t: 'ai-reject', messageId } satisfies Wire['aiReject'])
   }
 
   setTitle(title: string) {
@@ -290,8 +369,11 @@ export class CollabSession {
           v: PROTOCOL_VERSION,
           title: this.ymeta.get('title') ?? 'Shared diagram',
           canEdit: this.canEdit,
+          aiEnabled: this.aiEnabled,
           host: this.user,
         } satisfies Wire['welcome'])
+        if (this.aiState)
+          link.send({ t: 'ai-state', state: this.aiState } satisfies Wire['aiState'])
         link.send({ t: 'step1', sv: Y.encodeStateVector(this.ydoc) })
         link.send({
           t: 'awareness',
@@ -303,7 +385,9 @@ export class CollabSession {
         if (this.role !== 'guest') return
         this.hostUser = m.host
         this.canEdit = m.canEdit
+        this.aiEnabled = m.aiEnabled ?? true
         this.permissionChanged.emit(m.canEdit)
+        this.aiPermissionChanged.emit(this.aiEnabled)
         link.send({ t: 'step1', sv: Y.encodeStateVector(this.ydoc) })
         link.send({
           t: 'awareness',
@@ -327,6 +411,40 @@ export class CollabSession {
         if (this.role !== 'guest') return
         this.canEdit = m.canEdit
         this.permissionChanged.emit(m.canEdit)
+        if (typeof m.aiEnabled === 'boolean' && m.aiEnabled !== this.aiEnabled) {
+          this.aiEnabled = m.aiEnabled
+          this.aiPermissionChanged.emit(m.aiEnabled)
+        }
+        break
+      case 'ai-state':
+        if (this.role !== 'guest') return
+        this.aiState = m.state
+        this.aiStateChanged.emit(m.state)
+        break
+      case 'ai-request':
+        if (this.role !== 'host' || !this.aiEnabled) return
+        if (typeof m.request?.text !== 'string') return
+        this.aiRequested.emit({
+          id: String(m.request.id ?? ''),
+          text: String(m.request.text).slice(0, 20_000),
+          mode: m.request.mode === 'explain' ? 'explain' : 'edit',
+          author: String(m.request.author ?? 'Guest').slice(0, 60),
+        })
+        break
+      case 'ai-cancel':
+        if (this.role === 'host' && this.aiEnabled) this.aiCancelRequested.emit()
+        break
+      case 'ai-apply':
+        // Applying a proposal edits the shared diagram, so it follows the edit permission.
+        if (this.role === 'host' && this.aiEnabled && this.canEdit)
+          this.aiApplyRequested.emit({
+            messageId: String(m.messageId),
+            author: String(m.author ?? 'Guest').slice(0, 60),
+          })
+        break
+      case 'ai-reject':
+        if (this.role === 'host' && this.aiEnabled)
+          this.aiRejectRequested.emit({ messageId: String(m.messageId) })
         break
       case 'end':
         if (this.role === 'guest') this.finish('ended', 'The host ended the session.')

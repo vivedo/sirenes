@@ -15,6 +15,13 @@ async function seed(page: Page) {
   })
 }
 
+/** Pages in one context share settings, so the panel may already be open. */
+async function ensureAiPanel(page: Page) {
+  if ((await page.getByTestId('ai-panel').count()) === 0)
+    await page.getByTestId('toggle-ai').click()
+  await expect(page.getByTestId('ai-panel')).toBeVisible()
+}
+
 async function typeAtEnd(page: Page, text: string) {
   await page.locator('.cm-content').first().click()
   await page.keyboard.press('ControlOrMeta+End')
@@ -158,4 +165,108 @@ test('joining a dead session explains and offers retry', async ({ page }) => {
   await page.goto('/#live:nobodyhome0000000000000')
   await expect(page.getByTestId('join-banner')).toContainText('Could not join')
   await expect(page.getByTestId('join-retry')).toBeVisible()
+})
+
+const REPLY =
+  'Added a retry loop.\n```mermaid\nflowchart TD\n    A[Start] --> B{Is it working?}\n    B -- Yes --> C[Ship it]\n    B -- No --> D[Debug]\n    D --> R[Retry]\n    R --> B\n    C --> E([Done])\n```'
+
+async function mockOpenRouter(page: Page) {
+  await page.route('https://openrouter.ai/api/v1/auth/key', (route) =>
+    route.fulfill({ json: { data: { label: 'host key', usage: 0, limit: 10 } } }),
+  )
+  await page.route('https://openrouter.ai/api/v1/models', (route) =>
+    route.fulfill({
+      json: {
+        data: [
+          {
+            id: 'test/fast',
+            name: 'Test Fast',
+            context_length: 32000,
+            pricing: { prompt: '0', completion: '0' },
+          },
+        ],
+      },
+    }),
+  )
+  await page.route('https://openrouter.ai/api/v1/chat/completions', async (route) => {
+    const frames = [
+      ...REPLY.match(/[\s\S]{1,25}/g)!.map((piece) =>
+        JSON.stringify({ choices: [{ delta: { content: piece } }] }),
+      ),
+      JSON.stringify({
+        choices: [{ delta: {}, finish_reason: 'stop' }],
+        usage: { prompt_tokens: 50, completion_tokens: 40, cost: 0.0001 },
+      }),
+      '[DONE]',
+    ]
+    await route.fulfill({
+      status: 200,
+      headers: { 'Content-Type': 'text/event-stream' },
+      body: frames.map((f) => `data: ${f}\n\n`).join(''),
+    })
+  })
+}
+
+test("guests use the host's assistant as one shared chat, and the host can turn it off", async ({
+  page,
+  context,
+}) => {
+  await mockOpenRouter(page)
+  const link = await startHosting(page)
+  // Host sets up a key.
+  await ensureAiPanel(page)
+  await page.getByTestId('ai-key-input').fill('sk-or-v1-host-000000000')
+  await page.getByTestId('ai-save-key').click()
+  await expect(page.getByTestId('ai-host-note')).toContainText('Shared with your guests')
+
+  const guest = await context.newPage()
+  // Pages in one context share localStorage, so the guest sees the host's key too; what matters
+  // is that the guest never runs a completion itself.
+  let guestCompletionCalls = 0
+  await guest.route('https://openrouter.ai/**', (route) => {
+    if (route.request().url().includes('/chat/completions')) guestCompletionCalls++
+    return route.fulfill({ status: 500 })
+  })
+  await guest.goto(link)
+  await expect(guest.getByTestId('shared-badge')).toBeVisible()
+  await ensureAiPanel(guest)
+  await expect(guest.getByTestId('ai-shared-note')).toContainText("Runs on Ada's key")
+  // The guest never needs a key of its own.
+  await expect(guest.getByTestId('ai-key-settings')).toHaveCount(0)
+
+  await guest.getByTestId('live-strip').click()
+  await guest.getByTestId('live-name').fill('Grace')
+  await guest.keyboard.press('Escape')
+
+  await guest.getByTestId('ai-input').fill('add a retry loop after debug')
+  await guest.getByTestId('ai-send').click()
+  // The host executes it and both sides see the same conversation with the author's name.
+  await expect(page.getByTestId('ai-msg-author')).toContainText('Grace')
+  await expect(page.getByTestId('ai-proposal')).toBeVisible()
+  await expect(guest.getByTestId('ai-msg-author')).toContainText('Grace')
+  await expect(guest.getByTestId('ai-proposal')).toBeVisible()
+  await expect(guest.getByTestId('ai-msg-assistant')).toContainText('Added a retry loop.')
+  expect(guestCompletionCalls).toBe(0)
+
+  // Guest accepts: the host applies it and the shared diagram updates everywhere.
+  await guest.getByTestId('ai-accept').click()
+  await expect(page.locator('.cm-content').first()).toContainText('R[Retry]')
+  await expect(guest.locator('.cm-content').first()).toContainText('R[Retry]')
+  await expect(page.getByTestId('ai-proposal')).toContainText('Applied by Grace')
+  await expect(guest.getByTestId('ai-proposal')).toContainText('Applied by Grace')
+
+  // Host turns the shared assistant off; the guest composer is disabled with a reason.
+  await page.getByTestId('live-strip').click()
+  await page.getByTestId('live-ai-enabled').uncheck()
+  await expect(guest.getByTestId('ai-input')).toBeDisabled()
+  await expect(guest.getByTestId('ai-panel')).toContainText('turned the shared assistant off')
+  await page.getByTestId('live-ai-enabled').check()
+  await expect(guest.getByTestId('ai-input')).toBeEnabled()
+
+  // The strip toggles the panel closed and open.
+  await expect(page.getByTestId('live-panel')).toBeVisible()
+  await page.getByTestId('live-strip').click()
+  await expect(page.getByTestId('live-panel')).toHaveCount(0)
+  await page.getByTestId('live-strip').click()
+  await expect(page.getByTestId('live-panel')).toBeVisible()
 })

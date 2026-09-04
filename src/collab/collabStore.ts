@@ -41,6 +41,8 @@ interface CollabStore {
   sessionId: string | null
   title: string
   canEdit: boolean
+  /** Host: guests may use the host's assistant. Guest: whether the host allows it. */
+  aiEnabled: boolean
   hostName: string | null
   participants: Participant[]
   error: string | null
@@ -57,6 +59,7 @@ interface CollabStore {
   leave: () => void
   setTitle: (title: string) => void
   setCanEdit: (canEdit: boolean) => void
+  setAiEnabled: (enabled: boolean) => void
 }
 
 /** Which transport to use. The e2e build sets VITE_COLLAB_TRANSPORT=fake. */
@@ -134,6 +137,9 @@ export const useCollabStore = create<CollabStore>((set, get) => {
       }),
     )
 
+    unsubs.push(session.aiPermissionChanged.on((aiEnabled) => set({ aiEnabled })))
+    void import('./aiBridge').then((m) => unsubs.push(m.attachAiBridge(session)))
+
     if (view)
       void import('./editorBinding').then((m) => {
         m.attachCollab(view, session)
@@ -176,6 +182,9 @@ export const useCollabStore = create<CollabStore>((set, get) => {
         toast.info(`${reason ?? 'Left the session.'} You keep a local copy of the diagram.`)
       }
     }
+    unsubs.push(session.aiPermissionChanged.on((aiEnabled) => set({ aiEnabled })))
+    void import('./aiBridge').then((m) => unsubs.push(m.attachAiBridge(session)))
+
     if (view)
       void import('./editorBinding').then((m) => {
         m.detachCollab(view)
@@ -191,6 +200,7 @@ export const useCollabStore = create<CollabStore>((set, get) => {
     sessionId: null,
     title: 'Shared diagram',
     canEdit: true,
+    aiEnabled: true,
     hostName: null,
     participants: [],
     error: null,
@@ -300,6 +310,10 @@ export const useCollabStore = create<CollabStore>((set, get) => {
     setCanEdit: (canEdit) => {
       get().session?.setCanEdit(canEdit)
       set({ canEdit })
+    },
+    setAiEnabled: (aiEnabled) => {
+      get().session?.setAiEnabled(aiEnabled)
+      set({ aiEnabled })
     },
   }
 })

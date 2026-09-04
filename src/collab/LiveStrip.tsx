@@ -3,13 +3,15 @@ import { Icon } from '../shared/Icon'
 
 /** Compact presence indicator in the toolbar while a session is active. */
 export function LiveStrip() {
-  const { session, status, participants, role } = useCollabStore()
+  const { session, status, participants, role, panelOpen } = useCollabStore()
   const setPanelOpen = useCollabStore((s) => s.setPanelOpen)
   if (!session) return null
   return (
     <button
       className={`live-strip live-${status}`}
-      onClick={() => setPanelOpen(true)}
+      onClick={() => setPanelOpen(!panelOpen)}
+      aria-pressed={panelOpen}
+      aria-expanded={panelOpen}
       title="Live collaboration"
       data-testid="live-strip"
     >
