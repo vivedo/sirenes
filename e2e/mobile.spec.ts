@@ -143,10 +143,6 @@ test('phone: a live-session guest keeps a single-row toolbar and menus stay on s
   await page.getByTestId('menu-share').click()
   await page.getByTestId('share-live').click()
   await page.getByTestId('live-name').fill('vivedo')
-  await page
-    .getByTestId('live-title')
-    .fill('things random')
-    .catch(() => {})
   await page.getByTestId('live-start').click()
   await expect(page.getByTestId('live-status')).toContainText('Sharing')
   await page.getByTestId('live-title').fill('things random')
