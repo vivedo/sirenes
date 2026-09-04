@@ -41,6 +41,8 @@ export async function clearAutosave(): Promise<void> {
 export function startAutosave(): () => void {
   const save = debounce((doc: DocumentState) => void writeAutosave(doc), AUTOSAVE_DEBOUNCE_MS)
   let prev = useDocumentStore.getState().doc
+  // Write once at start so the document id is stable across reloads even if nothing is edited.
+  if (!useDocumentStore.getState().pendingAutosave) void writeAutosave(prev)
   const unsub = useDocumentStore.subscribe((s) => {
     if (s.doc === prev) return
     prev = s.doc

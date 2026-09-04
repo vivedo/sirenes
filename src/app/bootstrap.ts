@@ -20,6 +20,11 @@ export function decideInitialDocument(
   fromAutosave: DocumentState | null,
 ): BootDecision {
   if (fromUrl) {
+    // Same diagram in the link and the autosave (the normal reload case): keep the autosaved
+    // identity so file name, saved state and AI history survive.
+    if (fromAutosave && fromAutosave.source === fromUrl.code) {
+      return { doc: { ...fromAutosave, mermaidTheme: fromUrl.mermaidTheme }, conflict: null }
+    }
     const doc: DocumentState = {
       id: newId(),
       source: fromUrl.code,

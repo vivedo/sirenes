@@ -1,0 +1,391 @@
+.ai-panel-header-actions {
+  display: flex;
+  gap: 2px;
+}
+
+.ai-panel-body {
+  padding: 12px;
+  overflow: auto;
+}
+
+.ai-muted {
+  color: var(--fg-muted);
+  font-size: 12px;
+}
+
+.ai-error {
+  color: var(--danger);
+  background: var(--danger-bg);
+  border-radius: var(--radius);
+  padding: 6px 8px;
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.ai-ok {
+  color: var(--ok);
+}
+
+.ai-warn {
+  color: var(--warn);
+}
+
+/* Key settings */
+.ai-key-form p {
+  margin: 0 0 12px;
+}
+
+.ai-key-form a {
+  color: var(--accent);
+}
+
+.ai-field {
+  display: block;
+  margin-bottom: 10px;
+}
+
+.ai-field > span {
+  display: block;
+  font-size: 12px;
+  color: var(--fg-muted);
+  margin-bottom: 4px;
+}
+
+.ai-key-input {
+  display: flex;
+  gap: 4px;
+}
+
+.ai-key-input input {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 5px 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.ai-radio-group {
+  border: none;
+  padding: 0;
+  margin: 0 0 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ai-radio-group label,
+.ai-check {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 13px;
+  margin: 8px 0;
+}
+
+.ai-key-current {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.ai-key-current code {
+  font-family: var(--font-mono);
+}
+
+/* Toolbar + model selector */
+.ai-toolbar {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.model-selector {
+  position: relative;
+}
+
+.model-button {
+  width: 100%;
+  justify-content: space-between;
+}
+
+.model-button-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.model-popover {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  max-height: 60vh;
+}
+
+.model-search {
+  margin: 6px;
+  padding: 5px 8px;
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.model-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 4px 4px;
+  overflow: auto;
+}
+
+.model-list li {
+  display: flex;
+  align-items: stretch;
+}
+
+.model-list li.selected .model-row {
+  background: var(--selection);
+}
+
+.model-group {
+  padding: 8px 8px 2px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--fg-muted);
+}
+
+.model-row {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+  text-align: left;
+  padding: 4px 8px;
+}
+
+.model-name {
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.model-meta {
+  font-size: 11px;
+  color: var(--fg-muted);
+}
+
+.model-star {
+  color: var(--fg-muted);
+  padding: 0 8px;
+}
+
+.model-star.on {
+  color: var(--warn);
+}
+
+.model-status {
+  padding: 8px;
+}
+
+/* Messages */
+.ai-messages {
+  flex: 1;
+  overflow: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ai-empty {
+  flex: 1;
+  padding: 16px 12px;
+}
+
+.ai-msg {
+  max-width: 100%;
+  font-size: 13px;
+}
+
+.ai-msg-user .ai-msg-body {
+  background: var(--selection);
+  border-radius: 10px 10px 2px 10px;
+  padding: 6px 10px;
+  margin-left: 24px;
+  white-space: pre-wrap;
+}
+
+.ai-msg-assistant .ai-msg-body {
+  white-space: pre-wrap;
+  padding: 2px 0;
+}
+
+.ai-cursor {
+  color: var(--accent);
+  animation: blink 1s steps(2) infinite;
+}
+
+@keyframes blink {
+  to {
+    opacity: 0;
+  }
+}
+
+.ai-msg-meta {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+  font-size: 11px;
+}
+
+.ai-proposal {
+  margin-top: 6px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+}
+
+.ai-proposal.invalid {
+  border-left-color: var(--warn);
+}
+
+.ai-proposal-head {
+  padding: 6px 8px 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ai-proposal-code {
+  margin: 4px 0 0;
+  padding: 6px 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  overflow: auto;
+  max-height: 140px;
+  color: var(--fg-muted);
+}
+
+.ai-proposal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+  padding: 6px 8px;
+  border-top: 1px solid var(--border);
+}
+
+/* Composer */
+.ai-composer {
+  border-top: 1px solid var(--border);
+  padding: 8px 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ai-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.ai-preset {
+  font-size: 12px;
+  min-height: 24px;
+  padding: 2px 8px;
+}
+
+.ai-input {
+  width: 100%;
+  resize: vertical;
+  min-height: 60px;
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px 8px;
+  font: inherit;
+  color: inherit;
+}
+
+.ai-composer-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Diff dialog */
+.diff-dialog {
+  width: min(1100px, 95vw);
+  max-width: 95vw;
+  padding: 16px;
+}
+
+.diff-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.diff-legend {
+  display: flex;
+  gap: 0;
+  font-size: 12px;
+  color: var(--fg-muted);
+}
+
+.diff-legend span {
+  flex: 1;
+  min-width: 200px;
+}
+
+.diff-body {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  max-height: 60vh;
+}
+
+.diff-body .cm-mergeView {
+  max-height: 60vh;
+}
+
+.diff-body .cm-mergeViewEditors {
+  height: auto;
+}
+
+.diff-body .cm-editor {
+  height: auto;
+  max-height: 60vh;
+}
+
+.diff-body .cm-changedLine {
+  background: var(--warn-bg);
+}
+
+.diff-body .cm-changedText {
+  background: rgba(227, 179, 65, 0.35);
+}
+
+.diff-body .cm-deletedChunk {
+  background: var(--danger-bg);
+}
+
+.diff-body .cm-insertedLine,
+.diff-body .cm-changedLine.cm-insertedLine {
+  background: rgba(26, 127, 55, 0.15);
+}

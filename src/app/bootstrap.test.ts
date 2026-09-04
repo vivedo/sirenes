@@ -35,12 +35,15 @@ describe('decideInitialDocument', () => {
     expect(conflict).toBe(autosave)
   })
 
-  it('does not offer an autosave identical to the link', () => {
-    const { conflict } = decideInitialDocument(
+  it('reuses the autosaved document when the link holds the same code', () => {
+    const { doc, conflict } = decideInitialDocument(
       { code: autosave.source, mermaidTheme: 'default' },
       autosave,
     )
     expect(conflict).toBeNull()
+    expect(doc.id).toBe('saved')
+    expect(doc.fileName).toBe('work.mmd')
+    expect(doc.mermaidTheme).toBe('default')
   })
 
   it('does not offer an empty autosave', () => {

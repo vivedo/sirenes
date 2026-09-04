@@ -10,7 +10,8 @@ import { useUrlSync } from '../share/useUrlSync'
 import { Toolbar } from './Toolbar'
 import { StatusBar } from './StatusBar'
 import { SplitPane } from './SplitPane'
-import { AiPanel } from './AiPanel'
+import { AiPanel } from '../ai/AiPanel'
+import { useAiStore } from '../ai/aiStore'
 import { ShortcutsDialog } from './ShortcutsDialog'
 import { ConflictDialog } from './ConflictDialog'
 import { Toasts } from './Toasts'
@@ -26,6 +27,8 @@ export function App() {
   useMermaidRender()
   useUrlSync()
   useKeyboardShortcuts(showShortcuts)
+
+  useEffect(() => useAiStore.getState().loadKeyFromStorage(), [])
 
   // UI theme follows the setting and the OS.
   useEffect(() => {

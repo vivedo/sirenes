@@ -29,8 +29,8 @@ describe('autosave', () => {
   })
 
   it('does not write while a conflict is pending', async () => {
-    const stop = startAutosave()
     useDocumentStore.setState({ pendingAutosave: useDocumentStore.getState().doc })
+    const stop = startAutosave()
     useDocumentStore.getState().setSource('graph TD\n X')
     await new Promise((r) => setTimeout(r, 400))
     expect(await readAutosave()).toBeNull()

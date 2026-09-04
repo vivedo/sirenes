@@ -2,20 +2,10 @@ import { useEffect } from 'react'
 import { useDocumentStore, selectIsDirty } from '../store/documentStore'
 import { useSettingsStore } from '../store/settingsStore'
 import { formatMermaid } from '../documents/format'
-import { getEditorView } from '../editor/editorRegistry'
+import { applySourceEdit } from '../editor/applySourceEdit'
 import { downloadBlob } from '../shared/download'
 import { copyShareLink } from '../share/shareLinks'
 import { documentBaseName } from '../documents/naming'
-
-/** Replace the editor content as one undoable transaction, falling back to the store. */
-export function applySourceEdit(source: string) {
-  const view = getEditorView()
-  if (view) {
-    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: source } })
-  } else {
-    useDocumentStore.getState().setSource(source)
-  }
-}
 
 export function useKeyboardShortcuts(onShowShortcuts: () => void) {
   useEffect(() => {

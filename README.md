@@ -26,6 +26,7 @@ See [docs/PRD.md](docs/PRD.md) for requirements and [docs/TASKS.md](docs/TASKS.m
 - The diagram lives in the URL fragment as zlib-deflated base64url (`#pako:…`), the same format as mermaid.live, so links open in either tool. View-only links open in preview mode.
 - Autosave to IndexedDB. If a link and your unsaved work disagree, you choose which to keep.
 - Keyboard shortcuts. Press `?` to see them.
+- AI assistant: paste your own OpenRouter key (stored in this browser only), pick any OpenRouter model, and ask for changes in plain language. Replies stream in, the proposed diagram is parsed before it is offered, and you review it as a side-by-side diff before accepting. Accept is a single undo step. Presets for fix, explain, simplify, tidy and convert. Token and cost usage per reply.
 
 ## Development
 

@@ -4,7 +4,7 @@ Ordered backlog derived from [PRD.md](./PRD.md). Phases run in priority order. R
 
 Priority order: UI → URL state → AI → local files → Google Drive → polish.
 
-**Status (2026-09-04):** Phases 0, 1 and 2 implemented. Next up: Phase 3, AI integration.
+**Status (2026-09-04):** Phases 0 to 3 implemented. Next up: Phase 4, local file editing.
 
 ---
 
@@ -71,25 +71,25 @@ Priority order: UI → URL state → AI → local files → Google Drive → pol
 
 ## Phase 3 — AI integration (OpenRouter)
 
-- [ ] **3.1 Settings panel.** API key input (masked, show/hide), "remember on this device" (`localStorage`) vs "this session only" (`sessionStorage`), validate via `GET /api/v1/auth/key`, remove button. [AI-1]
+- [x] **3.1 Settings panel.** API key input (masked, show/hide), "remember on this device" (`localStorage`) vs "this session only" (`sessionStorage`), validate via `GET /api/v1/auth/key`, remove button. [AI-1]
       Done when: a valid key shows the account label; invalid key shows an error.
-- [ ] **3.2 OpenRouter client.** `src/ai/openrouter.ts`: `listModels()`, `chat()` with SSE streaming via `ReadableStream`, `AbortController` support, `HTTP-Referer` and `X-Title` headers. [AI-4, AI-10]
+- [x] **3.2 OpenRouter client.** `src/ai/openrouter.ts`: `listModels()`, `chat()` with SSE streaming via `ReadableStream`, `AbortController` support, `HTTP-Referer` and `X-Title` headers. [AI-4, AI-10]
       Done when: unit tests with a mocked fetch verify streaming chunk assembly and abort.
-- [ ] **3.3 Model selector.** Searchable dropdown from `listModels()`, pin favourites, show context length and price per 1M tokens. Persist choice. [AI-2]
+- [x] **3.3 Model selector.** Searchable dropdown from `listModels()`, pin favourites, show context length and price per 1M tokens. Persist choice. [AI-2]
       Done when: search filters and favourites survive reload.
-- [ ] **3.4 Prompt builder.** System prompt instructing: return the full updated Mermaid in one ` ```mermaid ` block, preserve unrelated content, no prose unless asked. Include current source and last N turns. [AI-3]
+- [x] **3.4 Prompt builder.** System prompt instructing: return the full updated Mermaid in one ` ```mermaid ` block, preserve unrelated content, no prose unless asked. Include current source and last N turns. [AI-3]
       Done when: snapshot test of the assembled messages for a sample request.
-- [ ] **3.5 Chat panel UI.** Message list, streaming assistant bubble, input with Cmd/Ctrl+Enter, cancel button, error states (401, 402, 429, network). [AI-3, AI-4]
+- [x] **3.5 Chat panel UI.** Message list, streaming assistant bubble, input with Cmd/Ctrl+Enter, cancel button, error states (401, 402, 429, network). [AI-3, AI-4]
       Done when: a real request streams and can be cancelled mid-way.
-- [ ] **3.6 Proposal extraction and validation.** Extract the fenced block, run `mermaid.parse`; if invalid, mark the proposal as broken and offer "Ask the model to fix". [AI-5, AI-7]
+- [x] **3.6 Proposal extraction and validation.** Extract the fenced block, run `mermaid.parse`; if invalid, mark the proposal as broken and offer "Ask the model to fix". [AI-5, AI-7]
       Done when: a deliberately broken reply is caught and the fix flow works.
-- [ ] **3.7 Diff view.** Unified/side-by-side diff (CodeMirror merge view) between current source and proposal. Accept applies as a single undoable transaction; Reject discards. [AI-5, AI-6]
+- [x] **3.7 Diff view.** Unified/side-by-side diff (CodeMirror merge view) between current source and proposal. Accept applies as a single undoable transaction; Reject discards. [AI-5, AI-6]
       Done when: Accept then Cmd/Ctrl+Z restores the original in one step.
-- [ ] **3.8 Preset actions.** Buttons: Generate from description, Fix syntax, Explain, Simplify, Convert to <type>. [AI-8]
+- [x] **3.8 Preset actions.** Buttons: Fix syntax, Explain, Simplify, Tidy layout, Convert to <type>. "Generate from description" is the composer's default when the editor is empty. [AI-8]
       Done when: each preset produces a sensible prompt and, where relevant, a proposal.
-- [ ] **3.9 Usage display.** Show prompt/completion tokens and cost from `usage` when returned. [AI-9]
+- [x] **3.9 Usage display.** Show prompt/completion tokens and cost from `usage` when returned. [AI-9]
       Done when: a completed request shows numbers matching the OpenRouter dashboard.
-- [ ] **3.10 Per-document history.** Store conversation in IndexedDB keyed by document id; clear on new document unless pinned. [AI-11]
+- [x] **3.10 Per-document history.** Store conversation in IndexedDB keyed by document id; clear on new document unless pinned. [AI-11]
       Done when: reopening the same autosaved document restores the chat.
 
 ## Phase 4 — Local file editing

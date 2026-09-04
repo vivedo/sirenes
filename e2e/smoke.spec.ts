@@ -1,7 +1,10 @@
 import { expect, test } from '@playwright/test'
 
 test.beforeEach(async ({ page }) => {
+  // Fresh storage for each test, but only on the first load so reloads keep their state.
   await page.addInitScript(() => {
+    if (window.name === 'seeded') return
+    window.name = 'seeded'
     localStorage.clear()
     indexedDB.deleteDatabase('keyval-store')
   })
