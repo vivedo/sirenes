@@ -94,7 +94,7 @@ The site is fully static. `.github/workflows/deploy.yml` builds and publishes `d
 
 1. In the repository settings, set **Pages → Source** to _GitHub Actions_.
 2. For Google Drive, add `VITE_GOOGLE_CLIENT_ID`, `VITE_GOOGLE_API_KEY` and `VITE_GOOGLE_APP_ID` as repository **variables** (they are public by design). Add the Pages origin to the OAuth client's authorised origins.
-3. The workflow derives the base path and public URL from the Pages configuration, so project pages and custom domains both work without edits.
+3. The workflow derives the base path and public URL from the Pages configuration, so project pages and custom domains both work without edits. The values are read at build time: after changing the custom domain in the Pages settings, push a commit or re-run the deploy workflow so the assets are rebuilt for the new root.
 
 ## Privacy
 
