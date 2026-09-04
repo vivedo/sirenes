@@ -1,0 +1,39 @@
+import { beforeEach, describe, expect, it } from 'vitest'
+import { clearAutosave, readAutosave, startAutosave, writeAutosave } from './autosave'
+import { useDocumentStore } from '../store/documentStore'
+
+describe('autosave', () => {
+  beforeEach(async () => {
+    await clearAutosave()
+    useDocumentStore.setState({ pendingAutosave: null })
+  })
+
+  it('reads back what it wrote', async () => {
+    const doc = useDocumentStore.getState().doc
+    await writeAutosave({ ...doc, source: 'graph LR' })
+    const rec = await readAutosave()
+    expect(rec?.doc.source).toBe('graph LR')
+    expect(typeof rec?.savedAt).toBe('number')
+  })
+
+  it('returns null when empty', async () => {
+    expect(await readAutosave()).toBeNull()
+  })
+
+  it('persists store changes after the debounce', async () => {
+    const stop = startAutosave()
+    useDocumentStore.getState().setSource('sequenceDiagram\n A->>B: hi')
+    await new Promise((r) => setTimeout(r, 400))
+    expect((await readAutosave())?.doc.source).toBe('sequenceDiagram\n A->>B: hi')
+    stop()
+  })
+
+  it('does not write while a conflict is pending', async () => {
+    const stop = startAutosave()
+    useDocumentStore.setState({ pendingAutosave: useDocumentStore.getState().doc })
+    useDocumentStore.getState().setSource('graph TD\n X')
+    await new Promise((r) => setTimeout(r, 400))
+    expect(await readAutosave()).toBeNull()
+    stop()
+  })
+})

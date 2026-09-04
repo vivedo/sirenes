@@ -1,0 +1,49 @@
+# Sirenes
+
+Live [Mermaid](https://mermaid.js.org/) diagrams in the browser. Type on the left, see the diagram on the right, share it as a link. No backend: the only services Sirenes talks to are Google Drive and OpenRouter, both directly from your browser with your own credentials.
+
+_Sirenes_ is the Latin plural of _siren_, the mermaid of classical myth.
+
+## Status
+
+| Phase                                   | State   |
+| --------------------------------------- | ------- |
+| Editor and live preview                 | Done    |
+| Share via URL (mermaid.live compatible) | Done    |
+| AI assistant via OpenRouter             | Planned |
+| Local file open and save                | Planned |
+| Google Drive open and save              | Planned |
+
+See [docs/PRD.md](docs/PRD.md) for requirements and [docs/TASKS.md](docs/TASKS.md) for the backlog.
+
+## Features so far
+
+- CodeMirror 6 editor with Mermaid syntax highlighting, inline error markers, search, undo history.
+- Live render with a 250 ms debounce. Syntax errors keep the last good diagram on screen.
+- Pan and zoom, fit to screen, export to SVG and PNG (1x, 2x, 4x), copy SVG or source.
+- Mermaid theme selector; light and dark UI following your OS with a manual toggle.
+- Templates for flowchart, sequence, class, state, ER, Gantt, pie, mind map, timeline and git graph.
+- The diagram lives in the URL fragment as zlib-deflated base64url (`#pako:…`), the same format as mermaid.live, so links open in either tool. View-only links open in preview mode.
+- Autosave to IndexedDB. If a link and your unsaved work disagree, you choose which to keep.
+- Keyboard shortcuts. Press `?` to see them.
+
+## Development
+
+```sh
+npm install
+npm run dev          # http://localhost:5173
+npm test             # unit tests (Vitest)
+npm run test:e2e     # Playwright smoke tests (needs: npx playwright install chromium)
+npm run lint         # oxlint + prettier --check
+npm run build        # static output in dist/
+```
+
+Copy `.env.example` to `.env` when you reach the Google Drive phase. Nothing is required for the editor and sharing features.
+
+## Deploy
+
+The site is fully static. `.github/workflows/deploy.yml` publishes `dist/` to GitHub Pages on every push to `main`. Set `BASE_PATH=/` if you serve from a custom domain.
+
+## Privacy
+
+Diagram content is stored in your browser (IndexedDB and the URL) and nowhere else until you choose to save it to a file or to Drive. Anyone who has a share link can read the diagram in it.
