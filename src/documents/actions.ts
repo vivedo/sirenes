@@ -1,4 +1,5 @@
-import { useDocumentStore, selectIsDirty } from '../store/documentStore'
+import { useDocumentStore, selectIsDirty, documentText } from '../store/documentStore'
+import { parseDiagrams } from './multi'
 import { useSaveUiStore, type SaveDestination } from '../app/saveUiStore'
 import { toast } from '../store/toastStore'
 import type { DocumentState } from '../store/types'
@@ -10,7 +11,7 @@ import { loadHandle } from '../storage/local/handles'
 import { driveProvider, openDriveFileById } from '../storage/drive'
 import { ask } from '../app/dialogStore'
 import { useCollabStore } from '../collab/collabStore'
-import { extractMermaid, serializeForFile } from './markdown'
+import { extractMermaid, spliceMermaid } from './markdown'
 import { documentBaseName } from './naming'
 
 // ---------------------------------------------------------------------------------------------
@@ -43,6 +44,7 @@ export function loadOpenedFile(file: OpenedFile): boolean {
   }
   let source = file.content
   let markdown = null
+  let diagrams = null
   if (isMarkdownFileName(file.name)) {
     const extracted = extractMermaid(file.content)
     if (!extracted) {
@@ -53,11 +55,14 @@ export function loadOpenedFile(file: OpenedFile): boolean {
     markdown = extracted.wrapper
     if (extracted.count > 1)
       toast.warn(`${file.name} has ${extracted.count} mermaid blocks. Editing the first one.`)
+  } else {
+    diagrams = parseDiagrams(file.content)
   }
   replaceDocument(
     () =>
       useDocumentStore.getState().newDocument({
         source,
+        diagrams: diagrams ?? undefined,
         fileName: file.name,
         saved: true,
         origin: file.origin,
@@ -130,6 +135,11 @@ export function startNewDocument(source?: string) {
 // ---------------------------------------------------------------------------------------------
 // Saving
 
+/** Full file content for the current document: Markdown-wrapped single diagram, or all diagrams. */
+export function fileText(doc: DocumentState): string {
+  return doc.markdown ? spliceMermaid(doc.markdown, doc.source) : documentText(doc)
+}
+
 function suggestedFileName(): string {
   const { doc } = useDocumentStore.getState()
   if (doc.fileName) return doc.fileName
@@ -192,7 +202,7 @@ export async function performSaveAs(
   const { doc } = useDocumentStore.getState()
   ui.setBusy(true)
   try {
-    const result = await provider.saveAs(serializeForFile(doc.source, doc.markdown), target)
+    const result = await provider.saveAs(fileText(doc), target)
     if (!result) {
       ui.setBusy(false)
       return false
@@ -223,18 +233,14 @@ export async function saveDocument(): Promise<boolean> {
   }
   if (doc.origin.handleKey === null) {
     // Download fallback: every save is a fresh download of the same name.
-    await provider.save(
-      doc.origin,
-      serializeForFile(doc.source, doc.markdown),
-      doc.fileName ?? suggestedFileName(),
-    )
+    await provider.save(doc.origin, fileText(doc), doc.fileName ?? suggestedFileName())
     useDocumentStore.getState().markSaved()
     return true
   }
   try {
     const result = await provider.save(
       doc.origin,
-      serializeForFile(doc.source, doc.markdown),
+      fileText(doc),
       doc.fileName ?? suggestedFileName(),
     )
     recordSave(result)
@@ -297,7 +303,7 @@ export async function saveToDrive(): Promise<boolean> {
     }
     const result = await driveProvider.save(
       doc.origin,
-      serializeForFile(doc.source, doc.markdown),
+      fileText(doc),
       doc.fileName ?? suggestedFileName(),
     )
     recordSave(result)

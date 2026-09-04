@@ -1,6 +1,8 @@
 import type { MermaidTheme, ShareState } from '../store/types'
 import { MERMAID_THEMES } from '../store/types'
 import { getTheme, isThemeId, type ThemeId } from '../themes/registry'
+import type { DocumentState } from '../store/types'
+import type { Diagram } from '../documents/multi'
 import { fromBase64Url, toBase64Url } from './base64url'
 
 /**
@@ -65,7 +67,11 @@ interface WirePayload {
   code: string
   mermaid: string
   view?: 'preview'
-  sirenes?: { theme?: string }
+  sirenes?: {
+    theme?: string
+    diagrams?: { name: string | null; source: string }[]
+    active?: number
+  }
   // mermaid.live also sends these; harmless for us and helpful for it.
   autoSync?: boolean
   updateDiagram?: boolean
@@ -80,6 +86,13 @@ export function serializeState(state: ShareState): string {
     updateDiagram: true,
   }
   if (theme.engine !== 'mermaid') payload.sirenes = { theme: theme.id }
+  if (state.diagrams && state.diagrams.length > 1) {
+    payload.sirenes = {
+      ...(payload.sirenes ?? {}),
+      diagrams: state.diagrams,
+      active: state.active ?? 0,
+    }
+  }
   if (state.view) payload.view = state.view
   return JSON.stringify(payload)
 }
@@ -104,6 +117,16 @@ export function deserializeState(json: string): ShareState {
 
   const state: ShareState = { code: raw.code, theme }
   if (raw.view === 'preview') state.view = 'preview'
+  const ds = raw.sirenes?.diagrams
+  if (Array.isArray(ds) && ds.length > 1 && ds.every((d) => d && typeof d.source === 'string')) {
+    state.diagrams = ds.map((d) => ({
+      name: typeof d.name === 'string' ? d.name : null,
+      source: d.source,
+    }))
+    const a = raw.sirenes?.active
+    state.active = typeof a === 'number' && a >= 0 && a < ds.length ? a : 0
+    state.code = state.diagrams[state.active].source
+  }
   return state
 }
 
@@ -141,4 +164,14 @@ export async function decodeState(fragment: string): Promise<ShareState> {
 export function isShareFragment(fragment: string): boolean {
   const frag = fragment.startsWith('#') ? fragment.slice(1) : fragment
   return frag.startsWith(PAKO_PREFIX) || frag.startsWith(BASE64_PREFIX)
+}
+
+/** What to put in a link for a document: the active diagram as `code`, plus all diagrams when there are several. */
+export function shareStateOf(doc: DocumentState): ShareState {
+  const state: ShareState = { code: doc.source, theme: doc.theme }
+  if (doc.diagrams.length > 1) {
+    state.diagrams = doc.diagrams as Diagram[]
+    state.active = doc.active
+  }
+  return state
 }

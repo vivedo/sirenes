@@ -1,4 +1,10 @@
-import { useDocumentStore, createBlankDocument } from '../store/documentStore'
+import {
+  useDocumentStore,
+  createBlankDocument,
+  makeDocument,
+  documentText,
+} from '../store/documentStore'
+import { serializeDiagrams } from '../documents/multi'
 import { useSettingsStore } from '../store/settingsStore'
 import { toast } from '../store/toastStore'
 import type { DocumentState, ShareState } from '../store/types'
@@ -24,22 +30,21 @@ export function decideInitialDocument(
   if (fromUrl) {
     // Same diagram in the link and the autosave (the normal reload case): keep the autosaved
     // identity so file name, saved state and AI history survive.
-    if (fromAutosave && fromAutosave.source === fromUrl.code) {
+    const urlText = fromUrl.diagrams ? serializeDiagrams(fromUrl.diagrams) : fromUrl.code
+    if (fromAutosave && documentText(fromAutosave) === urlText) {
       return { doc: { ...fromAutosave, theme: fromUrl.theme }, conflict: null }
     }
-    const doc: DocumentState = {
+    const doc: DocumentState = makeDocument({
       id: newId(),
       source: fromUrl.code,
+      diagrams: fromUrl.diagrams,
+      active: fromUrl.active,
       theme: fromUrl.theme,
-      fileName: null,
-      savedSource: null,
-      origin: null,
-      markdown: null,
-    }
+    })
     const autosaveDiffers =
       fromAutosave !== null &&
-      fromAutosave.source.trim() !== '' &&
-      fromAutosave.source !== fromUrl.code
+      documentText(fromAutosave).trim() !== '' &&
+      documentText(fromAutosave) !== urlText
     return { doc, conflict: autosaveDiffers ? fromAutosave : null }
   }
   if (fromAutosave) return { doc: fromAutosave, conflict: null }

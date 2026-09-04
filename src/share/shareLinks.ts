@@ -1,14 +1,13 @@
 import { useDocumentStore } from '../store/documentStore'
 import { toast } from '../store/toastStore'
 import { copyText } from '../shared/download'
-import { encodeState } from './codec'
+import { encodeState, shareStateOf } from './codec'
 import { buildUrl, classifyUrlLength } from './urlState'
 
 export async function buildShareLink(viewOnly: boolean): Promise<string> {
   const { doc } = useDocumentStore.getState()
   const fragment = await encodeState({
-    code: doc.source,
-    theme: doc.theme,
+    ...shareStateOf(doc),
     ...(viewOnly ? { view: 'preview' as const } : {}),
   })
   return buildUrl(fragment)

@@ -34,10 +34,9 @@ export function Editor() {
     if (!host.current) return
     const store = useDocumentStore.getState()
 
-    const view = new EditorView({
-      parent: host.current,
-      state: EditorState.create({
-        doc: store.doc.source,
+    const createState = (doc: string) =>
+      EditorState.create({
+        doc,
         extensions: [
           lineNumbers(),
           highlightActiveLineGutter(),
@@ -67,8 +66,9 @@ export function Editor() {
             }
           }),
         ],
-      }),
-    })
+      })
+
+    const view = new EditorView({ parent: host.current, state: createState(store.doc.source) })
     viewRef.current = view
     setEditorView(view)
 
@@ -80,11 +80,13 @@ export function Editor() {
       if (useCollabStore.getState().session) return
       const current = view.state.doc.toString()
       if (current === s.doc.source) return
-      view.dispatch({
-        changes: { from: 0, to: current.length, insert: s.doc.source },
-        // A whole new document should not be undoable back into the old one.
-        annotations: s.doc.id !== prev.doc.id ? [] : undefined,
-      })
+      if (s.doc.id !== prev.doc.id || s.doc.active !== prev.doc.active) {
+        // Another document or diagram: start with fresh undo history rather than making the
+        // switch itself undoable.
+        view.setState(createState(s.doc.source))
+        return
+      }
+      view.dispatch({ changes: { from: 0, to: current.length, insert: s.doc.source } })
     })
 
     let lastError = useDocumentStore.getState().render.error

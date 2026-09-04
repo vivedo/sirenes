@@ -2,16 +2,14 @@ import { describe, expect, it } from 'vitest'
 import { decideInitialDocument } from './bootstrap'
 import type { DocumentState } from '../store/types'
 import { DEFAULT_TEMPLATE } from '../documents/templates'
+import { makeDocument } from '../store/documentStore'
 
-const autosave: DocumentState = {
+const autosave: DocumentState = makeDocument({
   id: 'saved',
   source: 'graph LR\n  saved --> work',
   theme: 'dark',
   fileName: 'work.mmd',
-  savedSource: null,
-  origin: null,
-  markdown: null,
-}
+})
 
 describe('decideInitialDocument', () => {
   it('uses the template when nothing is stored', () => {
@@ -51,7 +49,7 @@ describe('decideInitialDocument', () => {
   it('does not offer an empty autosave', () => {
     const { conflict } = decideInitialDocument(
       { code: 'graph TD', theme: 'default' },
-      { ...autosave, source: '   \n' },
+      makeDocument({ ...autosave, source: '   \n', diagrams: undefined }),
     )
     expect(conflict).toBeNull()
   })

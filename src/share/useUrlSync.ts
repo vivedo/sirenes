@@ -1,11 +1,17 @@
 import { useEffect } from 'react'
-import { useDocumentStore } from '../store/documentStore'
+import { useDocumentStore, makeDocument } from '../store/documentStore'
 import { useSettingsStore } from '../store/settingsStore'
 import { toast } from '../store/toastStore'
 import { debounce } from '../shared/debounce'
 import { newId } from '../shared/id'
 import { useCollabStore } from '../collab/collabStore'
-import { decodeState, encodeState, isShareFragment, supportsCompression } from './codec'
+import {
+  decodeState,
+  encodeState,
+  isShareFragment,
+  shareStateOf,
+  supportsCompression,
+} from './codec'
 import { buildUrl, classifyUrlLength, readFragment, writeFragment } from './urlState'
 
 const URL_DEBOUNCE_MS = 500
@@ -30,10 +36,11 @@ export function useUrlSync() {
       const collab = useCollabStore.getState()
       if (collab.session || collab.pendingJoin || collab.status === 'connecting') return
       const { doc } = store
-      const fragment = await encodeState({ code: doc.source, theme: doc.theme })
+      const fragment = await encodeState(shareStateOf(doc))
       // The document may have changed while we were compressing.
       const now = useDocumentStore.getState().doc
-      if (now.source !== doc.source || now.theme !== doc.theme) return
+      if (now.diagrams !== doc.diagrams || now.active !== doc.active || now.theme !== doc.theme)
+        return
 
       const status = classifyUrlLength(buildUrl(fragment))
       store.setUrlStatus(!supportsCompression() && status === 'ok' ? 'unsupported' : status)
@@ -52,7 +59,8 @@ export function useUrlSync() {
     let prev = useDocumentStore.getState()
     const unsub = useDocumentStore.subscribe((s) => {
       const changed =
-        s.doc.source !== prev.doc.source ||
+        s.doc.diagrams !== prev.doc.diagrams ||
+        s.doc.active !== prev.doc.active ||
         s.doc.theme !== prev.doc.theme ||
         s.hydrated !== prev.hydrated ||
         s.pendingAutosave !== prev.pendingAutosave
@@ -68,15 +76,15 @@ export function useUrlSync() {
       try {
         const state = await decodeState(fragment)
         lastWritten = fragment
-        useDocumentStore.getState().loadDocument({
-          id: newId(),
-          source: state.code,
-          theme: state.theme,
-          fileName: null,
-          savedSource: null,
-          origin: null,
-          markdown: null,
-        })
+        useDocumentStore.getState().loadDocument(
+          makeDocument({
+            id: newId(),
+            source: state.code,
+            diagrams: state.diagrams,
+            active: state.active,
+            theme: state.theme,
+          }),
+        )
         if (state.view === 'preview') useSettingsStore.getState().setLayout('preview')
       } catch {
         toast.error('That link does not contain a readable diagram.')

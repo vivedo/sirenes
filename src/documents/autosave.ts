@@ -15,9 +15,15 @@ export async function readAutosave(): Promise<AutosaveRecord | null> {
   try {
     const rec = await get<AutosaveRecord>(AUTOSAVE_KEY)
     if (!rec || typeof rec.doc?.source !== 'string') return null
-    // Records written before origin/markdown existed.
+    // Records written before origin/markdown/diagrams existed.
     rec.doc.origin ??= null
     rec.doc.markdown ??= null
+    if (!Array.isArray(rec.doc.diagrams) || rec.doc.diagrams.length === 0) {
+      rec.doc.diagrams = [{ name: null, source: rec.doc.source }]
+      rec.doc.active = 0
+    }
+    rec.doc.active = Math.min(Math.max(0, rec.doc.active ?? 0), rec.doc.diagrams.length - 1)
+    rec.doc.source = rec.doc.diagrams[rec.doc.active].source
     return rec
   } catch {
     return null

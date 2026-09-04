@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Editor } from '../editor/Editor'
+import { DiagramTabs } from './DiagramTabs'
 import { Preview } from '../preview/Preview'
 import { useMermaidRender } from '../preview/useMermaidRender'
 import { useDocumentStore, selectIsDirty } from '../store/documentStore'
@@ -98,7 +99,15 @@ export function App() {
       <JoinBanner />
       <main className="workspace">
         {hydrated ? (
-          <SplitPane left={<Editor />} right={<Preview />} />
+          <SplitPane
+            left={
+              <div className="editor-pane">
+                <DiagramTabs />
+                <Editor />
+              </div>
+            }
+            right={<Preview />}
+          />
         ) : (
           <div className="booting" />
         )}

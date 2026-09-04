@@ -109,3 +109,37 @@ describe('codec', () => {
     expect(await decodeState(frag)).toEqual(sample)
   })
 })
+
+describe('multi-diagram links', () => {
+  it('carries every diagram plus the active one as mermaid.live-readable code', async () => {
+    const diagrams = [
+      { name: 'Login', source: 'graph TD\n  A\n' },
+      { name: 'Pay', source: 'pie\n  "a": 1\n' },
+    ]
+    const frag = await encodeState({
+      code: diagrams[1].source,
+      theme: 'default',
+      diagrams,
+      active: 1,
+    })
+    const back = await decodeState(frag)
+    expect(back.diagrams).toEqual(diagrams)
+    expect(back.active).toBe(1)
+    expect(back.code).toBe('pie\n  "a": 1\n')
+    const wire = JSON.parse(serializeState({ code: 'x', theme: 'default', diagrams, active: 0 }))
+    expect(wire.code).toBe('x')
+    expect(wire.sirenes.diagrams).toHaveLength(2)
+  })
+
+  it('omits the diagrams field for single-diagram documents', () => {
+    const wire = JSON.parse(
+      serializeState({
+        code: 'x',
+        theme: 'default',
+        diagrams: [{ name: null, source: 'x' }],
+        active: 0,
+      }),
+    )
+    expect(wire.sirenes).toBeUndefined()
+  })
+})

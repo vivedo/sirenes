@@ -55,6 +55,7 @@ Version 1.0.0. All planned phases are implemented and covered by tests. See [CHA
 - Local files: open `.mmd`, `.mermaid`, `.txt` or `.md` from disk or by dragging them onto the window. In Chromium browsers Save writes back to the same file through the File System Access API; elsewhere Save downloads. Recent files list.
 - No browser pop-ups: Save as uses an in-app panel for the name and destination, and replacing unsaved work shows an Undo toast instead of a confirmation.
 - Markdown files round-trip: only the first ```mermaid block is edited, the rest of the file is written back byte for byte.
+- Several diagrams in one `.mmd` file: tabs above the editor add, rename, switch and remove diagrams. On disk they are separated by a `%% --- name ---` comment line that Mermaid ignores and the editor never shows, so every section is still a plain diagram. Files without separators are unchanged. Share links carry all diagrams; exports are named after the active one.
 - Google Drive: open with the Google Picker, save in place, or save a new file into a folder you choose with the Picker (the last folder is remembered). Sirenes asks for the `drive.file` scope only, so it can see just the files you pick or create with it. If a file changed on Drive since you opened it, you choose between overwriting and saving a copy. Drive's "Open with" links work. The access token stays in memory and is never stored.
 
 ### Live collaboration

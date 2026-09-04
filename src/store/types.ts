@@ -1,5 +1,6 @@
 import type { ThemeId } from '../themes/registry'
 import type { DocumentOrigin, MarkdownWrapper } from '../storage/types'
+import type { Diagram } from '../documents/multi'
 
 export const MERMAID_THEMES = ['default', 'dark', 'forest', 'neutral', 'base'] as const
 export type MermaidTheme = (typeof MERMAID_THEMES)[number]
@@ -34,10 +35,14 @@ export type UrlStatus = 'ok' | 'long' | 'too-long' | 'unsupported'
 export interface DocumentState {
   /** Stable id for autosave and per-document AI history. */
   id: string
+  /** Source of the active diagram. Mirrors diagrams[active].source; kept for every consumer that only cares about one diagram. */
   source: string
+  /** All diagrams in this document; at least one. */
+  diagrams: Diagram[]
+  active: number
   theme: ThemeId
   fileName: string | null
-  /** Source at the time of the last save to a file or Drive. null when never saved. */
+  /** Serialized document text (all diagrams) at the last save to a file or Drive. null when never saved. */
   savedSource: string | null
   /** Where Save writes. null for documents that never touched a file. */
   origin: DocumentOrigin | null
@@ -46,7 +51,11 @@ export interface DocumentState {
 }
 
 export interface ShareState {
+  /** Active diagram's source (what mermaid.live reads). */
   code: string
   theme: ThemeId
   view?: 'preview'
+  /** Present when the document has more than one diagram. */
+  diagrams?: Diagram[]
+  active?: number
 }

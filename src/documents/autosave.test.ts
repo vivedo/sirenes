@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { clearAutosave, readAutosave, startAutosave, writeAutosave } from './autosave'
-import { useDocumentStore } from '../store/documentStore'
+import { useDocumentStore, makeDocument } from '../store/documentStore'
 
 describe('autosave', () => {
   beforeEach(async () => {
@@ -10,7 +10,7 @@ describe('autosave', () => {
 
   it('reads back what it wrote', async () => {
     const doc = useDocumentStore.getState().doc
-    await writeAutosave({ ...doc, source: 'graph LR' })
+    await writeAutosave(makeDocument({ ...doc, source: 'graph LR', diagrams: undefined }))
     const rec = await readAutosave()
     expect(rec?.doc.source).toBe('graph LR')
     expect(typeof rec?.savedAt).toBe('number')

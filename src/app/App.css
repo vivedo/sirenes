@@ -437,3 +437,15 @@ button.danger {
 .toolbar {
   position: relative;
 }
+
+.editor-pane {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.editor-pane .editor {
+  flex: 1;
+  min-height: 0;
+}

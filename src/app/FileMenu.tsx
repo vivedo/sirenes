@@ -17,7 +17,7 @@ import { clearRecent, readRecent, type RecentEntry } from '../storage/recent'
 import { supportsFileSystemAccess } from '../storage/local'
 import { useDocumentStore, selectIsDirty } from '../store/documentStore'
 import { downloadBlob } from '../shared/download'
-import { serializeForFile } from '../documents/markdown'
+import { fileText } from '../documents/actions'
 import { modKey } from '../shared/platform'
 
 export function FileMenu() {
@@ -38,10 +38,7 @@ export function FileMenu() {
 
   const downloadSource = () => {
     const name = doc.fileName ?? 'diagram.mmd'
-    downloadBlob(
-      new Blob([serializeForFile(doc.source, doc.markdown)], { type: 'text/plain;charset=utf-8' }),
-      name,
-    )
+    downloadBlob(new Blob([fileText(doc)], { type: 'text/plain;charset=utf-8' }), name)
   }
 
   return (

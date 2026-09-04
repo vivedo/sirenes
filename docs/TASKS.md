@@ -113,6 +113,9 @@ Priority order: UI → URL state → AI → local files → Google Drive → pol
 - [x] **4.7 Recent files.** List of persisted local handles (Drive ids added in 5.7) in the File menu. [FS-6]
       Done when: a recently opened local file reopens from the menu.
 
+- [x] **4.8 Multiple diagrams per file.** `%% --- name ---` separators, parser/serializer with byte-for-byte round trip, tabs above the editor (add, rename, remove with Undo, switch with fresh undo history), share links and autosave carry all diagrams, exports named after the active diagram. Locked for Markdown documents and during live sessions. [FS-7]
+      Done when: e2e adds a second diagram, saves a file with separators, reopens it as tabs, and a share link restores both.
+
 ## Phase 5 — Google Drive integration
 
 - [x] **5.1 Google Cloud setup.** OAuth "Web application" client, Picker API key, enable Drive API, consent screen with privacy page link. Document steps in `docs/GOOGLE_SETUP.md`. [GD-1]

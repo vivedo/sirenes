@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Multiple diagrams per file, as tabs above the editor, separated on disk by `%% --- name ---` comment lines.
+
 - Shared AI assistant in live sessions: guests use the host's assistant, one conversation for everyone, host toggle to disable.
 - The live collaboration toolbar button toggles its panel.
 

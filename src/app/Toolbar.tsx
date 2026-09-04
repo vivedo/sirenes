@@ -14,7 +14,7 @@ import { toast } from '../store/toastStore'
 import { copyShareLink } from '../share/shareLinks'
 import { modKey } from '../shared/platform'
 import { resolveUiTheme } from '../settings/uiTheme'
-import { documentBaseName } from '../documents/naming'
+import { exportBaseName } from '../documents/naming'
 import { FileMenu } from './FileMenu'
 import { startNewDocument } from '../documents/actions'
 import { SavePanel } from './SavePanel'
@@ -37,7 +37,10 @@ export function Toolbar({ onShowShortcuts }: { onShowShortcuts: () => void }) {
   const aiPanelOpen = useSettingsStore((s) => s.aiPanelOpen)
   const toggleAiPanel = useSettingsStore((s) => s.toggleAiPanel)
 
-  const baseName = documentBaseName(doc.fileName)
+  const baseName = exportBaseName(
+    doc.fileName,
+    doc.diagrams.length > 1 ? doc.diagrams[doc.active]?.name : null,
+  )
   const isGuest = useCollabStore(selectIsGuest)
   const liveTitle = useCollabStore((s) => s.title)
   const hostName = useCollabStore((s) => s.hostName)

@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import type { CollabSession, Participant, SessionStatus, SessionUser } from './session'
 import type { TransportFactory } from './transport'
-import { useDocumentStore } from '../store/documentStore'
+import { useDocumentStore, makeDocument } from '../store/documentStore'
 import { getTheme, isThemeId } from '../themes/registry'
 import { toast } from '../store/toastStore'
 import { getEditorView } from '../editor/editorRegistry'
@@ -172,13 +172,25 @@ export const useCollabStore = create<CollabStore>((set, get) => {
         hostName: null,
         error: null,
         canEdit: true,
+        aiEnabled: true,
       })
       if (wasGuest) {
-        // The last synced text is already in the document store; give it a fresh local identity.
+        // Keep the last synced text (read from the editor, the authority during the session) and
+        // give it a fresh single-diagram local identity.
         const d = useDocumentStore.getState().doc
-        useDocumentStore
-          .getState()
-          .loadDocument({ ...d, id: newId(), fileName: null, origin: null, savedSource: null })
+        const source = view ? view.state.doc.toString() : d.source
+        useDocumentStore.getState().loadDocument(
+          makeDocument({
+            ...d,
+            source,
+            id: newId(),
+            fileName: null,
+            origin: null,
+            savedSource: null,
+            diagrams: undefined,
+            active: 0,
+          }),
+        )
         toast.info(`${reason ?? 'Left the session.'} You keep a local copy of the diagram.`)
       }
     }
