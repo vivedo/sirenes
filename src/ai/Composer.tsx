@@ -3,6 +3,7 @@ import { useAiStore } from './aiStore'
 import { useDocumentStore } from '../store/documentStore'
 import { CONVERT_TARGETS, PRESETS } from './prompt'
 import { Menu, MenuItem } from '../app/Menu'
+import { useOnlineStore } from '../shared/onlineStore'
 
 export function Composer() {
   const [draft, setDraft] = useState('')
@@ -11,9 +12,10 @@ export function Composer() {
   const cancel = useAiStore((s) => s.cancel)
   const hasError = useDocumentStore((s) => s.render.error !== null)
   const empty = useDocumentStore((s) => s.doc.source.trim() === '')
+  const online = useOnlineStore((s) => s.online)
 
   const submit = () => {
-    if (!draft.trim() || streaming) return
+    if (!draft.trim() || streaming || !online) return
     void send(draft, 'edit')
     setDraft('')
   }
@@ -32,7 +34,7 @@ export function Composer() {
           <button
             key={p.id}
             className="outline ai-preset"
-            disabled={streaming || (empty && p.id !== 'fix')}
+            disabled={streaming || !online || (empty && p.id !== 'fix')}
             onClick={() => void send(p.request({ hasError }), p.mode)}
             data-testid={`preset-${p.id}`}
           >
@@ -72,7 +74,9 @@ export function Composer() {
         data-testid="ai-input"
       />
       <div className="ai-composer-actions">
-        <span className="ai-muted">⌘/Ctrl + Enter to send</span>
+        <span className="ai-muted">
+          {online ? '⌘/Ctrl + Enter to send' : 'Offline: the AI assistant needs a connection'}
+        </span>
         {streaming ? (
           <button className="outline" onClick={cancel} data-testid="ai-cancel">
             Cancel

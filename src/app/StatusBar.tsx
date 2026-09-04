@@ -1,8 +1,9 @@
 import { useDocumentStore } from '../store/documentStore'
 import { MERMAID_VERSION } from '../preview/renderer'
 import { Icon } from '../shared/Icon'
+import { useOnlineStore } from '../shared/onlineStore'
 
-export function StatusBar() {
+export function StatusBar({ onShowPrivacy }: { onShowPrivacy: () => void }) {
   const error = useDocumentStore((s) => s.render.error)
   const rendering = useDocumentStore((s) => s.render.rendering)
   const urlStatus = useDocumentStore((s) => s.urlStatus)
@@ -10,6 +11,7 @@ export function StatusBar() {
   const engine = useDocumentStore((s) => s.render.engine)
   const source = useDocumentStore((s) => s.doc.source)
   const lines = source === '' ? 0 : source.split('\n').length
+  const online = useOnlineStore((s) => s.online)
 
   return (
     <footer className="statusbar" role="contentinfo">
@@ -33,6 +35,15 @@ export function StatusBar() {
         </span>
       )}
       <span className="status-spacer" />
+      {!online && (
+        <span
+          className="status-warn"
+          data-testid="status-offline"
+          title="Drive and AI need a connection. Editing, sharing and local files keep working."
+        >
+          Offline
+        </span>
+      )}
       {urlStatus === 'long' && (
         <span className="status-warn" data-testid="status-url">
           Long share link
@@ -43,6 +54,9 @@ export function StatusBar() {
           Diagram too large for a share link
         </span>
       )}
+      <button className="status-link" onClick={onShowPrivacy} data-testid="privacy-link">
+        Privacy
+      </button>
       <span className="status-muted">{lines} lines</span>
       <span className="status-muted" data-testid="status-engine">
         {engine === 'beautiful' ? 'beautiful-mermaid' : `Mermaid ${MERMAID_VERSION}`}

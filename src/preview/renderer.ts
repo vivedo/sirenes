@@ -1,4 +1,3 @@
-import mermaid from 'mermaid'
 import type { Engine, MermaidTheme, RenderError } from '../store/types'
 import { getTheme, type ThemeId } from '../themes/registry'
 import {
@@ -14,7 +13,15 @@ export const MERMAID_VERSION: string =
 let renderCount = 0
 let lastTheme: MermaidTheme | null = null
 
-function configure(theme: MermaidTheme) {
+type Mermaid = typeof import('mermaid').default
+let mermaidPromise: Promise<Mermaid> | null = null
+
+/** Mermaid core is large; load it on first use so the shell paints first. */
+export function loadMermaid(): Promise<Mermaid> {
+  return (mermaidPromise ??= import('mermaid').then((m) => m.default))
+}
+
+function configure(mermaid: Mermaid, theme: MermaidTheme) {
   if (lastTheme === theme) return
   lastTheme = theme
   mermaid.initialize({
@@ -55,7 +62,8 @@ export interface RenderOutcome {
 }
 
 async function renderWithMermaid(source: string, theme: MermaidTheme): Promise<string> {
-  configure(theme)
+  const mermaid = await loadMermaid()
+  configure(mermaid, theme)
   const id = `sirenes-${++renderCount}`
   const { svg } = await mermaid.render(id, source)
   document.getElementById('d' + id)?.remove()
@@ -73,6 +81,7 @@ export async function renderDiagram(source: string, themeId: ThemeId): Promise<R
   if (source.trim() === '') return base
 
   try {
+    const mermaid = await loadMermaid()
     await mermaid.parse(source)
   } catch (err) {
     return { ...base, error: toRenderError(err) }
@@ -122,6 +131,7 @@ export async function renderAscii(
 export async function validateMermaid(source: string): Promise<RenderError | null> {
   if (source.trim() === '') return null
   try {
+    const mermaid = await loadMermaid()
     await mermaid.parse(source)
     return null
   } catch (err) {

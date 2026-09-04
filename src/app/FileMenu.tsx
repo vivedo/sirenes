@@ -11,6 +11,7 @@ import {
 } from '../documents/actions'
 import { signOut, useDriveStore } from '../storage/drive'
 import { Icon } from '../shared/Icon'
+import { useOnlineStore } from '../shared/onlineStore'
 import { clearRecent, readRecent, type RecentEntry } from '../storage/recent'
 import { supportsFileSystemAccess } from '../storage/local'
 import { useDocumentStore, selectIsDirty } from '../store/documentStore'
@@ -25,6 +26,8 @@ export function FileMenu() {
   const fsa = supportsFileSystemAccess()
   const driveConfigured = useDriveStore((s) => s.configured)
   const driveSignedIn = useDriveStore((s) => s.signedIn)
+  const online = useOnlineStore((s) => s.online)
+  const driveOk = driveConfigured && online
 
   // Refresh the recent list when the document changes and every time the menu opens, since
   // recent entries are written asynchronously after a save.
@@ -90,7 +93,7 @@ export function FileMenu() {
               void openFromDrive()
               close()
             }}
-            disabled={!driveConfigured}
+            disabled={!driveOk}
             testId="drive-open"
           >
             <Icon name="cloud" /> Open from Google Drive…
@@ -100,7 +103,7 @@ export function FileMenu() {
               void saveAsToDrive()
               close()
             }}
-            disabled={!driveConfigured}
+            disabled={!driveOk}
             testId="drive-save-as"
           >
             <Icon name="cloud" /> Save to Google Drive…
@@ -119,6 +122,11 @@ export function FileMenu() {
           {!driveConfigured && (
             <li className="menu-note" role="note">
               Google Drive needs a client id at build time. See docs/GOOGLE_SETUP.md.
+            </li>
+          )}
+          {driveConfigured && !online && (
+            <li className="menu-note" role="note">
+              You are offline. Google Drive needs a connection.
             </li>
           )}
           {recent.length > 0 && (

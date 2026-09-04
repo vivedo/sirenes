@@ -85,7 +85,7 @@ button.danger {
 .toolbar button.active,
 .segmented button.active {
   background: var(--selection);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .segmented {
@@ -339,4 +339,31 @@ button.danger {
   box-shadow: var(--shadow);
   padding: 16px 24px;
   font-weight: 600;
+}
+
+.status-link {
+  min-height: 0;
+  padding: 0 4px;
+  color: var(--fg-muted);
+  font-size: 12px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.privacy {
+  max-width: min(640px, 92vw);
+}
+
+.privacy h3 {
+  font-size: 13px;
+  margin: 14px 0 6px;
+}
+
+.privacy ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.privacy li {
+  margin: 4px 0;
 }

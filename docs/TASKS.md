@@ -4,7 +4,7 @@ Ordered backlog derived from [PRD.md](./PRD.md). Phases run in priority order. R
 
 Priority order: UI → URL state → AI → local files → Google Drive → polish.
 
-**Status (2026-09-04):** Phases 0 to 5 implemented. Next up: Phase 6, polish and release. Drive is verified against a stubbed Google API only; a real OAuth client is still needed for a live check.
+**Status (2026-09-04):** All phases implemented; v1.0.0 tagged. Drive and OpenRouter are verified against stubbed services only; live checks with real credentials are still to do. Not done: service worker for offline asset caching (6.4, optional), Web Worker rendering (1.12, stretch).
 
 ---
 
@@ -132,19 +132,19 @@ Priority order: UI → URL state → AI → local files → Google Drive → pol
 
 ## Phase 6 — Polish and release
 
-- [ ] **6.1 Clear all data.** Settings action wiping `localStorage`, `sessionStorage`, IndexedDB, and revoking the Google token. Confirmation dialog. [PR-3]
+- [x] **6.1 Clear all data.** Settings action wiping `localStorage`, `sessionStorage`, IndexedDB, and revoking the Google token. Confirmation dialog. [PR-3]
       Done when: after clearing, the app boots as a fresh install.
-- [ ] **6.2 Privacy page.** Static route listing exactly what leaves the browser, to whom, and that share links contain the full diagram. Linked from footer and Google consent screen. [PR-5]
+- [x] **6.2 Privacy page.** Static route listing exactly what leaves the browser, to whom, and that share links contain the full diagram. Linked from footer and Google consent screen. [PR-5]
       Done when: page is live and referenced in the OAuth consent config.
-- [ ] **6.3 Accessibility pass.** Keyboard traversal, focus rings, ARIA labels on icon buttons, SVG `<title>`, contrast check. Lighthouse a11y ≥ 90.
+- [x] **6.3 Accessibility pass.** Keyboard traversal, focus rings, ARIA labels on icon buttons, SVG `<title>`, contrast check. Lighthouse a11y ≥ 90.
       Done when: axe reports no serious issues.
-- [ ] **6.4 Offline behaviour.** Detect `navigator.onLine`; disable Drive/AI controls with a tooltip; editor keeps working. Optional service worker for asset caching.
+- [x] **6.4 Offline behaviour.** Detect `navigator.onLine`; disable Drive/AI controls with a tooltip; editor keeps working. Optional service worker for asset caching (not done).
       Done when: the app functions offline after first load.
-- [ ] **6.5 E2E smoke suite.** Playwright: type → render, share link round-trip, local open/save (Chromium), AI flow against a mocked OpenRouter.
+- [x] **6.5 E2E smoke suite.** Playwright: type → render, share link round-trip, local open/save (Chromium), AI flow against a mocked OpenRouter.
       Done when: suite runs in CI in under 5 minutes.
-- [ ] **6.6 Performance budget.** Code-split Mermaid and CodeMirror; Lighthouse perf ≥ 90; initial JS under 300 kB gzipped before lazy chunks.
+- [x] **6.6 Performance budget.** Code-split Mermaid and CodeMirror; Lighthouse perf ≥ 90; initial JS under 300 kB gzipped before lazy chunks.
       Done when: bundle analyzer and Lighthouse confirm the budget.
-- [ ] **6.7 Docs and release.** README with screenshots, `docs/GOOGLE_SETUP.md`, CHANGELOG, `v1.0.0` tag, pinned Mermaid version shown in the UI footer.
+- [x] **6.7 Docs and release.** README with screenshots, `docs/GOOGLE_SETUP.md`, CHANGELOG, `v1.0.0` tag, pinned Mermaid version shown in the UI footer.
       Done when: a stranger can clone, configure, and deploy from the README alone.
 
 ---

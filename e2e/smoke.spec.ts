@@ -153,3 +153,44 @@ test('view-only link shows the diagram', async ({ page }) => {
   await expect(svg).toBeVisible()
   await expect(svg).toBeInViewport()
 })
+
+test('privacy dialog opens from the status bar and #privacy, and Clear all data resets the app', async ({
+  page,
+}) => {
+  await page.goto('/#privacy')
+  await expect(page.getByTestId('privacy-dialog')).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('privacy-dialog')).toBeHidden()
+
+  await page.locator('.cm-content').first().click()
+  await page.keyboard.press('ControlOrMeta+A')
+  await page.keyboard.type('pie\n"remember": 1')
+  await page.getByTestId('toggle-ui-theme').click()
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('sirenes:settings')))
+    .toContain('dark')
+
+  await page.getByTestId('privacy-link').click()
+  await page.getByTestId('clear-all').click()
+  await page.getByTestId('clear-all-confirm').click()
+  await page.waitForLoadState('load')
+  await expect(page.locator('.cm-content').first()).toContainText('flowchart TD')
+  expect(await page.evaluate(() => localStorage.getItem('sirenes:settings'))).toBeNull()
+  expect(new URL(page.url()).hash).toBe('')
+})
+
+test('going offline flags the status bar and disables Drive and AI sending', async ({
+  page,
+  context,
+}) => {
+  await page.goto('/')
+  await context.setOffline(true)
+  await page.evaluate(() => window.dispatchEvent(new Event('offline')))
+  await expect(page.getByTestId('status-offline')).toBeVisible()
+  await page.getByTestId('menu-file').click()
+  await expect(page.getByTestId('drive-open')).toBeDisabled()
+  await page.keyboard.press('Escape')
+  await context.setOffline(false)
+  await page.evaluate(() => window.dispatchEvent(new Event('online')))
+  await expect(page.getByTestId('status-offline')).toHaveCount(0)
+})

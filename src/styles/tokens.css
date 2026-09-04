@@ -13,6 +13,8 @@
   --border: #d9d9de;
   --accent: #0f6fd6;
   --accent-fg: #ffffff;
+  /* Accent-coloured text on --selection; darker than --accent to reach 4.5:1. */
+  --accent-text: #084b94;
   --danger: #c62828;
   --danger-bg: #fdecec;
   --warn: #9a6700;
@@ -43,6 +45,7 @@
   --border: #33333a;
   --accent: #4f9cf5;
   --accent-fg: #0b1220;
+  --accent-text: #a9d1ff;
   --danger: #ff6b6b;
   --danger-bg: #3a1e1e;
   --warn: #e3b341;

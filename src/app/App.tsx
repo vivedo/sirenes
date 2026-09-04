@@ -18,6 +18,7 @@ import { Toasts } from './Toasts'
 import { DropZone } from './DropZone'
 import { ChoiceDialog } from './ChoiceDialog'
 import { DriveBanner } from './DriveBanner'
+import { PrivacyDialog } from '../settings/PrivacyDialog'
 import { useKeyboardShortcuts } from './useKeyboardShortcuts'
 import './App.css'
 
@@ -25,6 +26,7 @@ export function App() {
   const hydrated = useDocumentStore((s) => s.hydrated)
   const aiPanelOpen = useSettingsStore((s) => s.aiPanelOpen)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const [privacyOpen, setPrivacyOpen] = useState(location.hash === '#privacy')
   const showShortcuts = useCallback(() => setShortcutsOpen(true), [])
 
   useMermaidRender()
@@ -78,8 +80,9 @@ export function App() {
         )}
         {aiPanelOpen && <AiPanel />}
       </main>
-      <StatusBar />
+      <StatusBar onShowPrivacy={() => setPrivacyOpen(true)} />
       <ShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+      <PrivacyDialog open={privacyOpen} onClose={() => setPrivacyOpen(false)} />
       <ConflictDialog />
       <ChoiceDialog />
       <Toasts />
