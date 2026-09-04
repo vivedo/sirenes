@@ -85,9 +85,13 @@ export function Toolbar({ onShowShortcuts }: { onShowShortcuts: () => void }) {
   return (
     <header className="toolbar" role="banner">
       <div className="brand" title="Sirenes — live Mermaid diagrams">
-        <span className="brand-mark" aria-hidden="true">
-          ~
-        </span>
+        <img
+          className="brand-mark"
+          src={`${import.meta.env.BASE_URL}favicon.svg`}
+          alt=""
+          width="22"
+          height="22"
+        />
         Sirēnēs
       </div>
 
