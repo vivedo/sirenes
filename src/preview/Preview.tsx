@@ -96,7 +96,7 @@ export function Preview() {
     return (
       <div className="preview preview-text" data-testid="preview">
         {empty ? (
-          <div className="preview-empty">Start typing Mermaid on the left, or pick a template.</div>
+          <div className="preview-empty">Start typing Mermaid on the left.</div>
         ) : ascii ? (
           <pre className="preview-ascii" data-testid="preview-ascii">
             {ascii}
@@ -137,9 +137,7 @@ export function Preview() {
           }}
           aria-live="polite"
         />
-        {empty && (
-          <div className="preview-empty">Start typing Mermaid on the left, or pick a template.</div>
-        )}
+        {empty && <div className="preview-empty">Start typing Mermaid on the left.</div>}
         {error && (
           <div className="preview-error" role="alert">
             <strong>Syntax error{error.line ? ` on line ${error.line}` : ''}</strong>
