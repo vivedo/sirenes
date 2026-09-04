@@ -28,6 +28,7 @@ See [docs/PRD.md](docs/PRD.md) for requirements and [docs/TASKS.md](docs/TASKS.m
 - The diagram lives in the URL fragment as zlib-deflated base64url (`#pako:…`), the same format as mermaid.live, so links open in either tool. View-only links open in preview mode.
 - Autosave to IndexedDB. If a link and your unsaved work disagree, you choose which to keep.
 - Local files: open `.mmd`, `.mermaid`, `.txt` or `.md` from disk or by dragging them onto the window. In Chromium browsers Save writes back to the same file through the File System Access API; elsewhere Save downloads. Markdown files round-trip: only the first ```mermaid block is edited, the rest of the file is untouched. Recent files list.
+- Google Drive: open with the Google Picker, save in place, or save a new file. Sirenes only asks for the `drive.file` scope, so it can only see files you pick or create with it. If the file changed on Drive since you opened it, you choose between overwriting and saving a copy. Drive's "Open with" links work. The access token stays in memory and is never stored.
 - Keyboard shortcuts. Press `?` to see them.
 - AI assistant: paste your own OpenRouter key (stored in this browser only), pick any OpenRouter model, and ask for changes in plain language. Replies stream in, the proposed diagram is parsed before it is offered, and you review it as a side-by-side diff before accepting. Accept is a single undo step. Presets for fix, explain, simplify, tidy and convert. Token and cost usage per reply.
 
@@ -42,7 +43,7 @@ npm run lint         # oxlint + prettier --check
 npm run build        # static output in dist/
 ```
 
-Copy `.env.example` to `.env` when you reach the Google Drive phase. Nothing is required for the editor and sharing features.
+Copy `.env.example` to `.env` and follow [docs/GOOGLE_SETUP.md](docs/GOOGLE_SETUP.md) to enable Google Drive. Nothing is required for the editor, sharing, AI and local file features.
 
 ## Deploy
 

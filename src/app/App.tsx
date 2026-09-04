@@ -16,6 +16,8 @@ import { ShortcutsDialog } from './ShortcutsDialog'
 import { ConflictDialog } from './ConflictDialog'
 import { Toasts } from './Toasts'
 import { DropZone } from './DropZone'
+import { ChoiceDialog } from './ChoiceDialog'
+import { DriveBanner } from './DriveBanner'
 import { useKeyboardShortcuts } from './useKeyboardShortcuts'
 import './App.css'
 
@@ -67,6 +69,7 @@ export function App() {
   return (
     <div className={`app${aiPanelOpen ? ' with-ai' : ''}`}>
       <Toolbar onShowShortcuts={showShortcuts} />
+      <DriveBanner />
       <main className="workspace">
         {hydrated ? (
           <SplitPane left={<Editor />} right={<Preview />} />
@@ -78,6 +81,7 @@ export function App() {
       <StatusBar />
       <ShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
       <ConflictDialog />
+      <ChoiceDialog />
       <Toasts />
       <DropZone />
     </div>

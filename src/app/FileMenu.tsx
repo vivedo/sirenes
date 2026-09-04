@@ -1,6 +1,16 @@
 import { useEffect, useState } from 'react'
 import { Menu, MenuItem, MenuSeparator } from './Menu'
-import { openFile, openRecentLocal, saveDocument, saveDocumentAs } from '../documents/actions'
+import {
+  openDriveFile,
+  openFile,
+  openFromDrive,
+  openRecentLocal,
+  saveAsToDrive,
+  saveDocument,
+  saveDocumentAs,
+} from '../documents/actions'
+import { signOut, useDriveStore } from '../storage/drive'
+import { Icon } from '../shared/Icon'
 import { clearRecent, readRecent, type RecentEntry } from '../storage/recent'
 import { supportsFileSystemAccess } from '../storage/local'
 import { useDocumentStore, selectIsDirty } from '../store/documentStore'
@@ -13,11 +23,13 @@ export function FileMenu() {
   const doc = useDocumentStore((s) => s.doc)
   const dirty = useDocumentStore(selectIsDirty)
   const fsa = supportsFileSystemAccess()
+  const driveConfigured = useDriveStore((s) => s.configured)
+  const driveSignedIn = useDriveStore((s) => s.signedIn)
 
-  // Refresh the recent list whenever the document identity changes (open/save).
-  useEffect(() => {
-    void readRecent().then(setRecent)
-  }, [doc.id, doc.fileName])
+  // Refresh the recent list when the document changes and every time the menu opens, since
+  // recent entries are written asynchronously after a save.
+  const refresh = () => void readRecent().then(setRecent)
+  useEffect(refresh, [doc.id, doc.fileName])
 
   const downloadSource = () => {
     const name = doc.fileName ?? 'diagram.mmd'
@@ -28,7 +40,7 @@ export function FileMenu() {
   }
 
   return (
-    <Menu label="File" icon="file" testId="menu-file">
+    <Menu label="File" icon="file" testId="menu-file" onOpen={refresh}>
       {(close) => (
         <>
           <MenuItem
@@ -72,6 +84,43 @@ export function FileMenu() {
               Download a copy
             </MenuItem>
           )}
+          <MenuSeparator />
+          <MenuItem
+            onClick={() => {
+              void openFromDrive()
+              close()
+            }}
+            disabled={!driveConfigured}
+            testId="drive-open"
+          >
+            <Icon name="cloud" /> Open from Google Drive…
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              void saveAsToDrive()
+              close()
+            }}
+            disabled={!driveConfigured}
+            testId="drive-save-as"
+          >
+            <Icon name="cloud" /> Save to Google Drive…
+          </MenuItem>
+          {driveSignedIn && (
+            <MenuItem
+              onClick={() => {
+                signOut()
+                close()
+              }}
+              testId="drive-sign-out"
+            >
+              Sign out of Google
+            </MenuItem>
+          )}
+          {!driveConfigured && (
+            <li className="menu-note" role="note">
+              Google Drive needs a client id at build time. See docs/GOOGLE_SETUP.md.
+            </li>
+          )}
           {recent.length > 0 && (
             <>
               <MenuSeparator />
@@ -83,11 +132,12 @@ export function FileMenu() {
                   key={`${r.kind}:${r.id}`}
                   onClick={() => {
                     if (r.kind === 'local') void openRecentLocal(r.id, r.name)
+                    else void openDriveFile(r.id, r.name)
                     close()
                   }}
                   testId="file-recent"
                 >
-                  {r.name}
+                  <Icon name={r.kind === 'drive' ? 'cloud' : 'file'} size={14} /> {r.name}
                 </MenuItem>
               ))}
               <MenuItem

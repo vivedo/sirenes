@@ -1,10 +1,12 @@
 import { useDocumentStore, selectIsDirty } from '../store/documentStore'
 import { toast } from '../store/toastStore'
-import type { OpenedFile, StorageProvider } from '../storage/types'
+import type { OpenedFile, SaveResult, StorageProvider } from '../storage/types'
 import { isMarkdownFileName, isSupportedFileName } from '../storage/types'
 import { getLocalProvider, NoHandleError, openFromFile, openFromHandle } from '../storage/local'
 import { addRecent, removeRecent } from '../storage/recent'
 import { loadHandle } from '../storage/local/handles'
+import { driveProvider, openDriveFileById } from '../storage/drive'
+import { ask } from '../app/dialogStore'
 import { extractMermaid, serializeForFile } from './markdown'
 import { documentBaseName } from './naming'
 
@@ -43,6 +45,8 @@ export function loadOpenedFile(file: OpenedFile): boolean {
   })
   if (file.origin.kind === 'local' && file.origin.handleKey)
     void addRecent({ kind: 'local', id: file.origin.handleKey, name: file.name })
+  if (file.origin.kind === 'drive')
+    void addRecent({ kind: 'drive', id: file.origin.fileId, name: file.name })
   return true
 }
 
@@ -106,6 +110,15 @@ function suggestedFileName(): string {
   return `${documentBaseName(null)}.mmd`
 }
 
+function recordSave(result: SaveResult) {
+  useDocumentStore.getState().markSaved(result.name, result.origin)
+  if (result.origin.kind === 'local' && result.origin.handleKey)
+    void addRecent({ kind: 'local', id: result.origin.handleKey, name: result.name })
+  if (result.origin.kind === 'drive')
+    void addRecent({ kind: 'drive', id: result.origin.fileId, name: result.name })
+  toast.info(`Saved ${result.name}${result.origin.kind === 'drive' ? ' to Google Drive' : ''}`)
+}
+
 export async function saveDocumentAs(
   provider: StorageProvider = getLocalProvider(),
 ): Promise<boolean> {
@@ -116,10 +129,7 @@ export async function saveDocumentAs(
       suggestedFileName(),
     )
     if (!result) return false
-    useDocumentStore.getState().markSaved(result.name, result.origin)
-    if (result.origin.kind === 'local' && result.origin.handleKey)
-      void addRecent({ kind: 'local', id: result.origin.handleKey, name: result.name })
-    toast.info(`Saved ${result.name}`)
+    recordSave(result)
     return true
   } catch (e) {
     toast.error(`Could not save: ${describe(e)}`)
@@ -130,6 +140,7 @@ export async function saveDocumentAs(
 /** Save to the current origin, or fall through to Save As when there is none. */
 export async function saveDocument(): Promise<boolean> {
   const { doc } = useDocumentStore.getState()
+  if (doc.origin?.kind === 'drive') return saveToDrive()
   const provider = getLocalProvider()
   if (!doc.origin || doc.origin.kind !== 'local') return saveDocumentAs(provider)
   if (doc.origin.handleKey === null) {
@@ -148,8 +159,7 @@ export async function saveDocument(): Promise<boolean> {
       serializeForFile(doc.source, doc.markdown),
       doc.fileName ?? suggestedFileName(),
     )
-    useDocumentStore.getState().markSaved(result.name, result.origin)
-    toast.info(`Saved ${result.name}`)
+    recordSave(result)
     return true
   } catch (e) {
     if (e instanceof NoHandleError) {
@@ -157,6 +167,58 @@ export async function saveDocument(): Promise<boolean> {
       return saveDocumentAs(provider)
     }
     toast.error(`Could not save: ${describe(e)}`)
+    return false
+  }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Google Drive
+
+export async function openFromDrive(): Promise<void> {
+  return openFile(driveProvider)
+}
+
+export async function openDriveFile(fileId: string, name = 'the file'): Promise<void> {
+  if (!confirmDiscard()) return
+  try {
+    loadOpenedFile(await openDriveFileById(fileId))
+  } catch (e) {
+    toast.error(`Could not open ${name} from Google Drive: ${describe(e)}`)
+    if (/not found/i.test(describe(e))) await removeRecent('drive', fileId)
+  }
+}
+
+export async function saveAsToDrive(): Promise<boolean> {
+  return saveDocumentAs(driveProvider)
+}
+
+/** Save to the Drive origin, warning first when the remote copy changed since we opened it. */
+export async function saveToDrive(): Promise<boolean> {
+  const { doc } = useDocumentStore.getState()
+  if (doc.origin?.kind !== 'drive') return saveAsToDrive()
+  try {
+    const conflict = await driveProvider.checkConflict?.(doc.origin)
+    if (conflict) {
+      const choice = await ask({
+        title: 'File changed on Google Drive',
+        message: `${conflict.message} Overwrite it with your version, or save yours as a new copy?`,
+        options: [
+          { id: 'copy', label: 'Save as copy', primary: true },
+          { id: 'overwrite', label: 'Overwrite', danger: true },
+        ],
+      })
+      if (choice === null) return false
+      if (choice === 'copy') return saveAsToDrive()
+    }
+    const result = await driveProvider.save(
+      doc.origin,
+      serializeForFile(doc.source, doc.markdown),
+      doc.fileName ?? suggestedFileName(),
+    )
+    recordSave(result)
+    return true
+  } catch (e) {
+    toast.error(`Could not save to Google Drive: ${describe(e)}`)
     return false
   }
 }

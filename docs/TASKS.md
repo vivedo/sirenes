@@ -4,7 +4,7 @@ Ordered backlog derived from [PRD.md](./PRD.md). Phases run in priority order. R
 
 Priority order: UI → URL state → AI → local files → Google Drive → polish.
 
-**Status (2026-09-04):** Phases 0 to 4 implemented. Next up: Phase 5, Google Drive.
+**Status (2026-09-04):** Phases 0 to 5 implemented. Next up: Phase 6, polish and release. Drive is verified against a stubbed Google API only; a real OAuth client is still needed for a live check.
 
 ---
 
@@ -115,19 +115,19 @@ Priority order: UI → URL state → AI → local files → Google Drive → pol
 
 ## Phase 5 — Google Drive integration
 
-- [ ] **5.1 Google Cloud setup.** OAuth "Web application" client, Picker API key, enable Drive API, consent screen with privacy page link. Document steps in `docs/GOOGLE_SETUP.md`. [GD-1]
+- [x] **5.1 Google Cloud setup.** OAuth "Web application" client, Picker API key, enable Drive API, consent screen with privacy page link. Document steps in `docs/GOOGLE_SETUP.md`. [GD-1]
       Done when: env vars are documented and a dev origin is authorised.
-- [ ] **5.2 GIS token client.** Load `gsi/client`, `initTokenClient` with `drive.file` scope, in-memory token with expiry, silent re-prompt on 401. Sign-out revokes. [GD-1, GD-2, GD-7, GD-8]
+- [x] **5.2 GIS token client.** Load `gsi/client`, `initTokenClient` with `drive.file` scope, in-memory token with expiry, silent re-prompt on 401. Sign-out revokes. [GD-1, GD-2, GD-7, GD-8]
       Done when: sign-in, expiry handling, and sign-out work; token never appears in storage.
-- [ ] **5.3 Picker.** Google Picker filtered to `.mmd`/`.mermaid`/`.md`/`text/plain`, single select. [GD-3]
+- [x] **5.3 Picker.** Google Picker filtered to `.mmd`/`.mermaid`/`.md`/`text/plain`, single select. [GD-3]
       Done when: picking a file returns its id and name.
-- [ ] **5.4 Drive provider.** `files.get?alt=media` for open; `files.create` multipart for save-as; `files.update` for save. Store `id`, `name`, `modifiedTime`, `headRevisionId`. [GD-4]
+- [x] **5.4 Drive provider.** `files.get?alt=media` for open; `files.create` multipart for save-as; `files.update` for save. Store `id`, `name`, `modifiedTime`, `headRevisionId`. [GD-4]
       Done when: open → edit → save → reopen shows the edit.
-- [ ] **5.5 Conflict detection.** Before `files.update`, fetch `modifiedTime`; if newer than opened, show "Overwrite / Save as copy / Cancel". [GD-5]
+- [x] **5.5 Conflict detection.** Before `files.update`, fetch `modifiedTime`; if newer than opened, show "Overwrite / Save as copy / Cancel". [GD-5]
       Done when: editing the file in Drive web between open and save triggers the dialog.
-- [ ] **5.6 Deep links and Open-with.** Handle `?state={"ids":[...]}` from Drive "Open with" and a plain `?driveId=` param; configure the Drive UI integration in Cloud Console. [GD-6]
+- [x] **5.6 Deep links and Open-with.** Handle `?state={"ids":[...]}` from Drive "Open with" and a plain `?driveId=` param; configure the Drive UI integration in Cloud Console. [GD-6]
       Done when: "Open with Sirenes" from Drive loads the file.
-- [ ] **5.7 Recent Drive files.** Add Drive entries to the recent list from 4.7. [FS-6]
+- [x] **5.7 Recent Drive files.** Add Drive entries to the recent list from 4.7. [FS-6]
       Done when: a Drive file reopens from the menu after re-auth.
 
 ## Phase 6 — Polish and release

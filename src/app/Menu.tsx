@@ -8,10 +8,12 @@ interface MenuProps {
   title?: string
   children: (close: () => void) => ReactNode
   testId?: string
+  /** Called each time the menu opens, e.g. to refresh its contents. */
+  onOpen?: () => void
 }
 
 /** Minimal dropdown menu: toggles on click, closes on outside click or Escape. */
-export function Menu({ label, icon, align = 'left', title, children, testId }: MenuProps) {
+export function Menu({ label, icon, align = 'left', title, children, testId, onOpen }: MenuProps) {
   const [open, setOpen] = useState(false)
   const root = useRef<HTMLDivElement>(null)
   const id = useId()
@@ -39,7 +41,10 @@ export function Menu({ label, icon, align = 'left', title, children, testId }: M
         aria-expanded={open}
         aria-controls={id}
         title={title}
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => {
+          if (!open) onOpen?.()
+          setOpen((o) => !o)
+        }}
         data-testid={testId}
       >
         {icon && <Icon name={icon} />}

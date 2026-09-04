@@ -7,6 +7,7 @@ import { decodeState, isShareFragment } from '../share/codec'
 import { readFragment } from '../share/urlState'
 import { noteFragmentWritten } from '../share/useUrlSync'
 import { newId } from '../shared/id'
+import { getDriveConfig, parseDriveDeepLink, stripQuery, useDriveStore } from '../storage/drive'
 
 export interface BootDecision {
   doc: DocumentState
@@ -71,4 +72,15 @@ export async function bootstrap(): Promise<void> {
   }
   store.setHydrated()
   if (urlError) toast.warn(urlError)
+
+  // Drive "Open with" and ?driveId= links. Sign-in needs a click, so surface a banner.
+  const driveId = parseDriveDeepLink(location.search)
+  if (driveId) {
+    stripQuery()
+    if (getDriveConfig()) useDriveStore.getState().setPendingOpenId(driveId)
+    else
+      toast.warn(
+        'This deployment is not connected to Google Drive, so the linked file cannot be opened.',
+      )
+  }
 }
