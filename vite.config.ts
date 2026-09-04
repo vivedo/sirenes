@@ -6,6 +6,13 @@ import { defineConfig, type Plugin } from 'vite'
 const require = createRequire(import.meta.url)
 const mermaidVersion: string = require('mermaid/package.json').version
 
+/** The PeerJS signalling server (WebSocket + HTTP id endpoint). Default: the public PeerJS cloud. */
+function peerConnectSrc(): string {
+  const host = process.env.VITE_PEER_HOST ?? '0.peerjs.com'
+  const port = process.env.VITE_PEER_PORT ? `:${process.env.VITE_PEER_PORT}` : ''
+  return `wss://${host}${port} https://${host}${port}`
+}
+
 const CSP = [
   "default-src 'self'",
   "script-src 'self' https://accounts.google.com https://apis.google.com",
@@ -13,7 +20,7 @@ const CSP = [
   "style-src 'self' 'unsafe-inline' https://accounts.google.com",
   "img-src 'self' data: blob: https://*.googleusercontent.com",
   "font-src 'self' data:",
-  "connect-src 'self' https://openrouter.ai https://www.googleapis.com https://accounts.google.com https://oauth2.googleapis.com",
+  `connect-src 'self' https://openrouter.ai https://www.googleapis.com https://accounts.google.com https://oauth2.googleapis.com ${peerConnectSrc()}`,
   'frame-src https://accounts.google.com https://docs.google.com',
   "object-src 'none'",
   "base-uri 'self'",

@@ -9,6 +9,7 @@ import { addRecent, removeRecent } from '../storage/recent'
 import { loadHandle } from '../storage/local/handles'
 import { driveProvider, openDriveFileById } from '../storage/drive'
 import { ask } from '../app/dialogStore'
+import { useCollabStore } from '../collab/collabStore'
 import { extractMermaid, serializeForFile } from './markdown'
 import { documentBaseName } from './naming'
 
@@ -132,6 +133,8 @@ export function startNewDocument(source?: string) {
 function suggestedFileName(): string {
   const { doc } = useDocumentStore.getState()
   if (doc.fileName) return doc.fileName
+  const live = useCollabStore.getState()
+  if (live.session && live.role === 'guest') return `${live.title || 'shared-diagram'}.mmd`
   return `${documentBaseName(null)}.mmd`
 }
 
@@ -164,10 +167,25 @@ export async function startSaveAs(
   useSaveUiStore.getState().show(destination, suggestedName)
 }
 
+/**
+ * Guests in a live session: write a copy without adopting it as the document's origin. The
+ * original stays the host's; the guest's copy is theirs alone.
+ */
+export async function startSaveCopy(destination: SaveDestination): Promise<void> {
+  const provider = providerFor(destination)
+  const name = suggestedFileName()
+  if (!provider.needsSaveTarget) {
+    await performSaveAs(destination, { name }, { copyOnly: true })
+    return
+  }
+  useSaveUiStore.getState().show(destination, name, true)
+}
+
 /** Write a new file to the chosen destination. Called by the save panel or directly for FSA. */
 export async function performSaveAs(
   destination: SaveDestination,
   target: SaveTarget,
+  opts: { copyOnly?: boolean } = {},
 ): Promise<boolean> {
   const provider = providerFor(destination)
   const ui = useSaveUiStore.getState()
@@ -179,7 +197,11 @@ export async function performSaveAs(
       ui.setBusy(false)
       return false
     }
-    recordSave(result)
+    if (opts.copyOnly)
+      toast.info(
+        `Saved a copy as ${result.name}${result.origin.kind === 'drive' ? ' on Google Drive' : ''}`,
+      )
+    else recordSave(result)
     ui.hide()
     return true
   } catch (e) {

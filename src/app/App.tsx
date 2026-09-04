@@ -19,6 +19,11 @@ import { DropZone } from './DropZone'
 import { ChoiceDialog } from './ChoiceDialog'
 import { DriveBanner } from './DriveBanner'
 import { PrivacyDialog } from '../settings/PrivacyDialog'
+import { useCollabStore } from '../collab/collabStore'
+import { JoinBanner } from '../collab/JoinBanner'
+import { LivePanel } from '../collab/LivePanel'
+import { writeFragment } from '../share/urlState'
+import '../collab/collab.css'
 import { useKeyboardShortcuts } from './useKeyboardShortcuts'
 import './App.css'
 
@@ -34,6 +39,24 @@ export function App() {
   useKeyboardShortcuts(showShortcuts)
 
   useEffect(() => useAiStore.getState().loadKeyFromStorage(), [])
+
+  // Join a #live: link once the editor exists; keep the address bar on the live link while active.
+  useEffect(() => {
+    if (!hydrated) return
+    const pending = useCollabStore.getState().pendingJoin
+    if (pending) {
+      useCollabStore.getState().setPendingJoin(null)
+      void useCollabStore.getState().join(pending)
+    }
+    return useCollabStore.subscribe((c, prev) => {
+      if (
+        c.sessionId &&
+        c.session &&
+        (c.sessionId !== prev.sessionId || c.session !== prev.session)
+      )
+        writeFragment(`live:${c.sessionId}`)
+    })
+  }, [hydrated])
 
   // UI theme follows the setting and the OS.
   useEffect(() => {
@@ -72,6 +95,7 @@ export function App() {
     <div className={`app${aiPanelOpen ? ' with-ai' : ''}`}>
       <Toolbar onShowShortcuts={showShortcuts} />
       <DriveBanner />
+      <JoinBanner />
       <main className="workspace">
         {hydrated ? (
           <SplitPane left={<Editor />} right={<Preview />} />
@@ -85,6 +109,7 @@ export function App() {
       <PrivacyDialog open={privacyOpen} onClose={() => setPrivacyOpen(false)} />
       <ConflictDialog />
       <ChoiceDialog />
+      <LivePanel />
       <Toasts />
       <DropZone />
     </div>

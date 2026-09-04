@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Live collaboration: peer-to-peer sessions over PeerJS/WebRTC with Yjs CRDT merging, named cursors, per-user undo, host controls (title, read-only, end), guest-only "Save a copy". Nothing about files, Drive or AI is shared.
+
 - Save to Google Drive into a folder chosen with the Picker; the last folder is remembered.
 - In-app save panel replaces `window.prompt`; Undo toast replaces `window.confirm` when new/open would discard unsaved work.
 - Wider menus without wrapping; trailing ellipses removed from menu labels.

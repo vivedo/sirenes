@@ -22,6 +22,8 @@ import { mermaid } from './mermaidLanguage'
 import { editorTheme } from './editorTheme'
 import { applyRenderError, errorLineField } from './errorDecorations'
 import { setEditorView } from './editorRegistry'
+import { collabCompartment, historyCompartment, readOnlyCompartment } from './compartments'
+import { useCollabStore } from '../collab/collabStore'
 import './Editor.css'
 
 export function Editor() {
@@ -40,7 +42,9 @@ export function Editor() {
           lineNumbers(),
           highlightActiveLineGutter(),
           highlightSpecialChars(),
-          history(),
+          historyCompartment.of([history(), keymap.of(historyKeymap)]),
+          collabCompartment.of([]),
+          readOnlyCompartment.of([]),
           drawSelection(),
           dropCursor(),
           EditorState.allowMultipleSelections.of(true),
@@ -53,13 +57,7 @@ export function Editor() {
           highlightSelectionMatches(),
           lintGutter(),
           errorLineField,
-          keymap.of([
-            ...closeBracketsKeymap,
-            ...defaultKeymap,
-            ...searchKeymap,
-            ...historyKeymap,
-            indentWithTab,
-          ]),
+          keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...searchKeymap, indentWithTab]),
           mermaid(),
           editorTheme,
           EditorView.lineWrapping,
@@ -77,6 +75,9 @@ export function Editor() {
     // External changes (template, URL load, AI accept) flow store -> editor.
     const unsubSource = useDocumentStore.subscribe((s, prev) => {
       if (s.doc.source === prev.doc.source && s.doc.id === prev.doc.id) return
+      // In a live session the shared text drives the editor; a store push would be treated by
+      // y-codemirror as a local edit and echoed to every peer.
+      if (useCollabStore.getState().session) return
       const current = view.state.doc.toString()
       if (current === s.doc.source) return
       view.dispatch({

@@ -8,6 +8,7 @@ import { readFragment } from '../share/urlState'
 import { noteFragmentWritten } from '../share/useUrlSync'
 import { newId } from '../shared/id'
 import { getDriveConfig, parseDriveDeepLink, stripQuery, useDriveStore } from '../storage/drive'
+import { HOST_RESUME_KEY, useCollabStore } from '../collab/collabStore'
 
 export interface BootDecision {
   doc: DocumentState
@@ -45,8 +46,11 @@ export function decideInitialDocument(
   return { doc: createBlankDocument(), conflict: null }
 }
 
+export const LIVE_PREFIX = 'live:'
+
 export async function bootstrap(): Promise<void> {
   const fragment = readFragment()
+  const liveId = fragment.startsWith(LIVE_PREFIX) ? fragment.slice(LIVE_PREFIX.length) : null
   let fromUrl: ShareState | null = null
   let urlError: string | null = null
 
@@ -72,6 +76,18 @@ export async function bootstrap(): Promise<void> {
   }
   store.setHydrated()
   if (urlError) toast.warn(urlError)
+
+  if (liveId) {
+    let resume: string | null = null
+    try {
+      resume = sessionStorage.getItem(HOST_RESUME_KEY)
+    } catch {
+      /* ignore */
+    }
+    // The host reloading its own tab resumes the session under the same id; anyone else joins.
+    if (resume === liveId) void useCollabStore.getState().startHosting(liveId)
+    else useCollabStore.getState().setPendingJoin(liveId)
+  }
 
   // Drive "Open with" and ?driveId= links. Sign-in needs a click, so surface a banner.
   const driveId = parseDriveDeepLink(location.search)

@@ -50,6 +50,12 @@ export function PrivacyDialog({ open, onClose }: { open: boolean; onClose: () =>
           (accounts.google.com) and the files you pick or create (www.googleapis.com). Sirenes asks
           for the drive.file scope only and keeps the access token in memory.
         </li>
+        <li>
+          <strong>Live sessions</strong> send the diagram, its theme and your cursor directly to the
+          other participants over an encrypted WebRTC channel. A PeerJS signalling server brokers
+          the connection and sees connection metadata, never content. Your files, Drive and AI data
+          are not part of a session.
+        </li>
       </ul>
       <p>
         No analytics, no third-party scripts beyond Google's sign-in and Picker, no cookies of our

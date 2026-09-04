@@ -1,6 +1,6 @@
 # Sirenes — Product Requirements Document
 
-**Status:** v1.0 — implemented (see [TASKS.md](./TASKS.md) for what shipped and what was left out)
+**Status:** v1.0 implemented; live collaboration (6.7) added after v1.0 (see [TASKS.md](./TASKS.md))
 **Date:** 2026-09-04
 **Owner:** Edoardo Viviani
 

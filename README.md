@@ -57,6 +57,12 @@ Version 1.0.0. All planned phases are implemented and covered by tests. See [CHA
 - Markdown files round-trip: only the first ```mermaid block is edited, the rest of the file is written back byte for byte.
 - Google Drive: open with the Google Picker, save in place, or save a new file into a folder you choose with the Picker (the last folder is remembered). Sirenes asks for the `drive.file` scope only, so it can see just the files you pick or create with it. If a file changed on Drive since you opened it, you choose between overwriting and saving a copy. Drive's "Open with" links work. The access token stays in memory and is never stored.
 
+### Live collaboration
+
+- Share → Share live starts a peer-to-peer session and gives you a `#live:` link. Guests who open it edit the diagram with you in real time, with named cursors and per-person undo. Text merges through a CRDT (Yjs); WebRTC data channels are brokered by a PeerJS signalling server and carry the content encrypted end to end.
+- Only the diagram, its theme, a session title and presence are shared. Your files, Google Drive, AI key and conversations never enter the session. Guests see a "Shared by" badge instead of your file name and can only save their own copy; you remain the owner of the original.
+- Host controls: session title, "guests can edit" toggle, end session. Guests keep a local copy when the session ends. See [docs/COLLAB.md](docs/COLLAB.md) for self-hosting the signalling server and adding a TURN relay.
+
 ### Privacy
 
 - A privacy dialog (status bar link, or open `#privacy`) lists exactly what leaves the browser and to whom.
@@ -65,7 +71,7 @@ Version 1.0.0. All planned phases are implemented and covered by tests. See [CHA
 
 ## Browser support
 
-Latest Chrome, Edge, Firefox and Safari. Save-in-place for local files needs the File System Access API (Chromium); other browsers fall back to downloads.
+Latest Chrome, Edge, Firefox and Safari. Save-in-place for local files needs the File System Access API (Chromium); other browsers fall back to downloads. Live collaboration needs WebRTC and a network path between participants; strict NATs may need a TURN server (see docs/COLLAB.md).
 
 ## Development
 

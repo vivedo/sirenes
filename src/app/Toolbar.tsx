@@ -18,6 +18,8 @@ import { documentBaseName } from '../documents/naming'
 import { FileMenu } from './FileMenu'
 import { startNewDocument } from '../documents/actions'
 import { SavePanel } from './SavePanel'
+import { LiveStrip } from '../collab/LiveStrip'
+import { selectIsGuest, useCollabStore } from '../collab/collabStore'
 
 export function Toolbar({ onShowShortcuts }: { onShowShortcuts: () => void }) {
   const doc = useDocumentStore((s) => s.doc)
@@ -36,6 +38,10 @@ export function Toolbar({ onShowShortcuts }: { onShowShortcuts: () => void }) {
   const toggleAiPanel = useSettingsStore((s) => s.toggleAiPanel)
 
   const baseName = documentBaseName(doc.fileName)
+  const isGuest = useCollabStore(selectIsGuest)
+  const liveTitle = useCollabStore((s) => s.title)
+  const hostName = useCollabStore((s) => s.hostName)
+  const openLive = useCollabStore((s) => s.setPanelOpen)
   const beautifulOk = isBeautifulSupported(doc.source) || doc.source.trim() === ''
   const resolvedTheme = resolveUiTheme(uiTheme)
 
@@ -221,6 +227,16 @@ export function Toolbar({ onShowShortcuts }: { onShowShortcuts: () => void }) {
             >
               Copy view-only link
             </MenuItem>
+            <MenuSeparator />
+            <MenuItem
+              onClick={() => {
+                openLive(true)
+                close()
+              }}
+              testId="share-live"
+            >
+              <Icon name="users" /> Share live
+            </MenuItem>
             {urlStatus !== 'ok' && (
               <>
                 <MenuSeparator />
@@ -293,13 +309,26 @@ export function Toolbar({ onShowShortcuts }: { onShowShortcuts: () => void }) {
       </div>
 
       <div className="toolbar-title" aria-live="polite" data-testid="toolbar-title">
-        {doc.origin?.kind === 'drive' && <Icon name="cloud" size={14} />}
-        {doc.origin?.kind === 'local' && <Icon name="file" size={14} />}
-        {doc.fileName ?? 'Untitled'}
-        {dirty && <span title="Unsaved changes"> •</span>}
+        {isGuest ? (
+          <>
+            {liveTitle}
+            <span className="shared-badge" data-testid="shared-badge">
+              <Icon name="users" size={11} /> Shared by {hostName ?? 'host'}
+            </span>
+          </>
+        ) : (
+          <>
+            {doc.origin?.kind === 'drive' && <Icon name="cloud" size={14} />}
+            {doc.origin?.kind === 'local' && <Icon name="file" size={14} />}
+            {doc.fileName ?? 'Untitled'}
+            {dirty && <span title="Unsaved changes"> •</span>}
+          </>
+        )}
       </div>
 
       <div className="toolbar-spacer" />
+
+      <LiveStrip />
 
       <button
         onClick={() => setUiTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}

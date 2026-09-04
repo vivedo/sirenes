@@ -4,6 +4,7 @@ import { useSettingsStore } from '../store/settingsStore'
 import { toast } from '../store/toastStore'
 import { debounce } from '../shared/debounce'
 import { newId } from '../shared/id'
+import { useCollabStore } from '../collab/collabStore'
 import { decodeState, encodeState, isShareFragment, supportsCompression } from './codec'
 import { buildUrl, classifyUrlLength, readFragment, writeFragment } from './urlState'
 
@@ -25,6 +26,9 @@ export function useUrlSync() {
     const sync = debounce(async () => {
       const store = useDocumentStore.getState()
       if (!store.hydrated || store.pendingAutosave) return
+      // In a live session the address bar shows the live link instead.
+      const collab = useCollabStore.getState()
+      if (collab.session || collab.pendingJoin || collab.status === 'connecting') return
       const { doc } = store
       const fragment = await encodeState({ code: doc.source, theme: doc.theme })
       // The document may have changed while we were compressing.
@@ -37,6 +41,13 @@ export function useUrlSync() {
       lastWritten = fragment
       writeFragment(fragment)
     }, URL_DEBOUNCE_MS)
+
+    // When a session ends, resume publishing the static link.
+    let prevCollab = useCollabStore.getState().session
+    const unsubCollab = useCollabStore.subscribe((c) => {
+      if (c.session === null && prevCollab !== null) void sync()
+      prevCollab = c.session
+    })
 
     let prev = useDocumentStore.getState()
     const unsub = useDocumentStore.subscribe((s) => {
@@ -53,6 +64,7 @@ export function useUrlSync() {
     const onHashChange = async () => {
       const fragment = readFragment()
       if (fragment === lastWritten || !isShareFragment(fragment)) return
+      if (useCollabStore.getState().session) return
       try {
         const state = await decodeState(fragment)
         lastWritten = fragment
@@ -74,6 +86,7 @@ export function useUrlSync() {
 
     return () => {
       unsub()
+      unsubCollab()
       sync.cancel()
       window.removeEventListener('hashchange', onHashChange)
     }
