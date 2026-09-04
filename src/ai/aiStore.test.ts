@@ -27,7 +27,15 @@ describe('aiStore.send', () => {
     })
     useDocumentStore.setState({
       doc: createBlankDocument({ source: 'graph TD\n A-->B\n' }),
-      render: { svg: null, error: null, rendering: false },
+      render: {
+        svg: null,
+        ascii: null,
+        asciiError: null,
+        error: null,
+        rendering: false,
+        engine: 'mermaid',
+        fallback: null,
+      },
     })
     mockedStream.mockReset()
   })

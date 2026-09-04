@@ -23,12 +23,12 @@ export function decideInitialDocument(
     // Same diagram in the link and the autosave (the normal reload case): keep the autosaved
     // identity so file name, saved state and AI history survive.
     if (fromAutosave && fromAutosave.source === fromUrl.code) {
-      return { doc: { ...fromAutosave, mermaidTheme: fromUrl.mermaidTheme }, conflict: null }
+      return { doc: { ...fromAutosave, theme: fromUrl.theme }, conflict: null }
     }
     const doc: DocumentState = {
       id: newId(),
       source: fromUrl.code,
-      mermaidTheme: fromUrl.mermaidTheme,
+      theme: fromUrl.theme,
       fileName: null,
       savedSource: null,
     }

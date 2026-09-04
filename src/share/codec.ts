@@ -1,5 +1,6 @@
 import type { MermaidTheme, ShareState } from '../store/types'
 import { MERMAID_THEMES } from '../store/types'
+import { getTheme, isThemeId, type ThemeId } from '../themes/registry'
 import { fromBase64Url, toBase64Url } from './base64url'
 
 /**
@@ -8,7 +9,10 @@ import { fromBase64Url, toBase64Url } from './base64url'
  *                       interoperate in both directions.
  *   #base64:<base64url> plain JSON, used only when CompressionStream is unavailable.
  *
- * Payload (mermaid.live compatible): { code: string, mermaid: string (JSON of config), view?: 'preview' }
+ * Payload (mermaid.live compatible): { code: string, mermaid: string (JSON of config), view?: 'preview',
+ *   sirenes?: { theme: ThemeId } }
+ * `mermaid.theme` always holds a Mermaid theme so mermaid.live renders sensibly; `sirenes.theme`
+ * carries the full Sirenes theme id (which may be a beautiful-mermaid theme).
  */
 export const PAKO_PREFIX = 'pako:'
 export const BASE64_PREFIX = 'base64:'
@@ -61,18 +65,21 @@ interface WirePayload {
   code: string
   mermaid: string
   view?: 'preview'
+  sirenes?: { theme?: string }
   // mermaid.live also sends these; harmless for us and helpful for it.
   autoSync?: boolean
   updateDiagram?: boolean
 }
 
 export function serializeState(state: ShareState): string {
+  const theme = getTheme(state.theme)
   const payload: WirePayload = {
     code: state.code,
-    mermaid: JSON.stringify({ theme: state.mermaidTheme }),
+    mermaid: JSON.stringify({ theme: theme.mermaidFallback }),
     autoSync: true,
     updateDiagram: true,
   }
+  if (theme.engine !== 'mermaid') payload.sirenes = { theme: theme.id }
   if (state.view) payload.view = state.view
   return JSON.stringify(payload)
 }
@@ -81,7 +88,7 @@ export function deserializeState(json: string): ShareState {
   const raw = JSON.parse(json) as Partial<WirePayload> & { mermaid?: unknown }
   if (typeof raw.code !== 'string') throw new Error('Link payload has no code')
 
-  let theme: MermaidTheme = 'default'
+  let theme: ThemeId = 'default'
   const config =
     typeof raw.mermaid === 'string'
       ? safeParse(raw.mermaid)
@@ -92,7 +99,10 @@ export function deserializeState(json: string): ShareState {
   if (typeof t === 'string' && (MERMAID_THEMES as readonly string[]).includes(t))
     theme = t as MermaidTheme
 
-  const state: ShareState = { code: raw.code, mermaidTheme: theme }
+  // A Sirenes-specific theme overrides the Mermaid fallback.
+  if (isThemeId(raw.sirenes?.theme)) theme = raw.sirenes.theme
+
+  const state: ShareState = { code: raw.code, theme }
   if (raw.view === 'preview') state.view = 'preview'
   return state
 }

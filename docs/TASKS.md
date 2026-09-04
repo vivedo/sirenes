@@ -49,6 +49,10 @@ Priority order: UI → URL state → AI → local files → Google Drive → pol
       Done when: each template renders without error.
 - [x] **1.11 Keyboard shortcuts.** Cmd/Ctrl+S save, +O open, +N new, +Shift+A toggle AI panel, +Shift+F format. Shortcut cheat-sheet dialog. [ED-10]
       Done when: shortcuts fire and the cheat-sheet lists them.
+- [x] **1.13 Beautiful themes.** Theme registry with two engines; beautiful-mermaid renders supported types, Mermaid renders the rest with a fallback notice; lazy-loaded chunk; CSP-safe SVG (no web-font import); share links carry the theme with a Mermaid fallback for mermaid.live. [ED-6, ED-11, ED-13, UR-4]
+      Done when: default flowchart renders via beautiful-mermaid; pie falls back with a notice; theme survives a share link.
+- [x] **1.14 ASCII preview mode.** SVG/ASCII toggle in the preview, Unicode or plain characters, copy and `.txt` export. [ED-12]
+      Done when: ASCII view shows box-drawing text for a flowchart and a clear message for a Gantt chart.
 - [ ] **1.12 Web Worker render (stretch, deferred).** Move `mermaid.render` into a worker if main-thread stalls exceed 100 ms on a 200-node diagram.
       Done when: typing stays responsive on the stress fixture.
 

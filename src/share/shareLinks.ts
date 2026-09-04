@@ -8,7 +8,7 @@ export async function buildShareLink(viewOnly: boolean): Promise<string> {
   const { doc } = useDocumentStore.getState()
   const fragment = await encodeState({
     code: doc.source,
-    mermaidTheme: doc.mermaidTheme,
+    theme: doc.theme,
     ...(viewOnly ? { view: 'preview' as const } : {}),
   })
   return buildUrl(fragment)

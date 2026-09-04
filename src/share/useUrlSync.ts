@@ -26,10 +26,10 @@ export function useUrlSync() {
       const store = useDocumentStore.getState()
       if (!store.hydrated || store.pendingAutosave) return
       const { doc } = store
-      const fragment = await encodeState({ code: doc.source, mermaidTheme: doc.mermaidTheme })
+      const fragment = await encodeState({ code: doc.source, theme: doc.theme })
       // The document may have changed while we were compressing.
       const now = useDocumentStore.getState().doc
-      if (now.source !== doc.source || now.mermaidTheme !== doc.mermaidTheme) return
+      if (now.source !== doc.source || now.theme !== doc.theme) return
 
       const status = classifyUrlLength(buildUrl(fragment))
       store.setUrlStatus(!supportsCompression() && status === 'ok' ? 'unsupported' : status)
@@ -42,7 +42,7 @@ export function useUrlSync() {
     const unsub = useDocumentStore.subscribe((s) => {
       const changed =
         s.doc.source !== prev.doc.source ||
-        s.doc.mermaidTheme !== prev.doc.mermaidTheme ||
+        s.doc.theme !== prev.doc.theme ||
         s.hydrated !== prev.hydrated ||
         s.pendingAutosave !== prev.pendingAutosave
       prev = s
@@ -59,7 +59,7 @@ export function useUrlSync() {
         useDocumentStore.getState().loadDocument({
           id: newId(),
           source: state.code,
-          mermaidTheme: state.mermaidTheme,
+          theme: state.theme,
           fileName: null,
           savedSource: null,
         })

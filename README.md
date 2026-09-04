@@ -21,7 +21,9 @@ See [docs/PRD.md](docs/PRD.md) for requirements and [docs/TASKS.md](docs/TASKS.m
 - CodeMirror 6 editor with Mermaid syntax highlighting, inline error markers, search, undo history.
 - Live render with a 250 ms debounce. Syntax errors keep the last good diagram on screen.
 - Pan and zoom, fit to screen, export to SVG and PNG (1x, 2x, 4x), copy SVG or source.
-- Mermaid theme selector; light and dark UI following your OS with a manual toggle.
+- Two rendering engines behind one theme picker: six curated [beautiful-mermaid](https://github.com/lukilabs/beautiful-mermaid) themes (zinc, GitHub, Catppuccin latte, Tokyo night) for flowchart, sequence, class, state, ER and XY charts, plus the five classic Mermaid themes for everything. Diagram types beautiful-mermaid cannot draw fall back to Mermaid with a notice.
+- ASCII preview mode: see and copy the diagram as Unicode box-drawing or plain ASCII text.
+- Light and dark UI following your OS with a manual toggle.
 - Templates for flowchart, sequence, class, state, ER, Gantt, pie, mind map, timeline and git graph.
 - The diagram lives in the URL fragment as zlib-deflated base64url (`#pako:…`), the same format as mermaid.live, so links open in either tool. View-only links open in preview mode.
 - Autosave to IndexedDB. If a link and your unsaved work disagree, you choose which to keep.

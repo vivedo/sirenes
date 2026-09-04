@@ -6,6 +6,8 @@ export function StatusBar() {
   const error = useDocumentStore((s) => s.render.error)
   const rendering = useDocumentStore((s) => s.render.rendering)
   const urlStatus = useDocumentStore((s) => s.urlStatus)
+  const fallback = useDocumentStore((s) => s.render.fallback)
+  const engine = useDocumentStore((s) => s.render.engine)
   const source = useDocumentStore((s) => s.doc.source)
   const lines = source === '' ? 0 : source.split('\n').length
 
@@ -25,6 +27,11 @@ export function StatusBar() {
           </>
         )}
       </span>
+      {fallback && !error && (
+        <span className="status-warn" title={fallback} data-testid="status-fallback">
+          Mermaid fallback
+        </span>
+      )}
       <span className="status-spacer" />
       {urlStatus === 'long' && (
         <span className="status-warn" data-testid="status-url">
@@ -37,7 +44,9 @@ export function StatusBar() {
         </span>
       )}
       <span className="status-muted">{lines} lines</span>
-      <span className="status-muted">Mermaid {MERMAID_VERSION}</span>
+      <span className="status-muted" data-testid="status-engine">
+        {engine === 'beautiful' ? 'beautiful-mermaid' : `Mermaid ${MERMAID_VERSION}`}
+      </span>
     </footer>
   )
 }

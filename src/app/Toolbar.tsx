@@ -1,6 +1,10 @@
 import { useDocumentStore, selectIsDirty } from '../store/documentStore'
 import { useSettingsStore } from '../store/settingsStore'
-import { MERMAID_THEMES, type Layout, type MermaidTheme } from '../store/types'
+import type { Layout } from '../store/types'
+import { getTheme, themesByEngine, type ThemeId } from '../themes/registry'
+import { beautifulBackground } from '../preview/beautifulEngine'
+import { renderAscii } from '../preview/renderer'
+import { useSettingsStore as useSettings } from '../store/settingsStore'
 import { TEMPLATES } from '../documents/templates'
 import { Menu, MenuItem, MenuSeparator } from './Menu'
 import { Icon } from '../shared/Icon'
@@ -17,7 +21,9 @@ export function Toolbar({ onShowShortcuts }: { onShowShortcuts: () => void }) {
   const svg = useDocumentStore((s) => s.render.svg)
   const dirty = useDocumentStore(selectIsDirty)
   const newDocument = useDocumentStore((s) => s.newDocument)
-  const setMermaidTheme = useDocumentStore((s) => s.setMermaidTheme)
+  const setTheme = useDocumentStore((s) => s.setTheme)
+  const fallback = useDocumentStore((s) => s.render.fallback)
+  const asciiPlain = useSettings((s) => s.asciiPlain)
   const urlStatus = useDocumentStore((s) => s.urlStatus)
 
   const layout = useSettingsStore((s) => s.layout)
@@ -39,7 +45,13 @@ export function Toolbar({ onShowShortcuts }: { onShowShortcuts: () => void }) {
   const exportPng = async (scale: number) => {
     if (!svg) return
     try {
-      const bg = resolvedTheme === 'dark' && doc.mermaidTheme === 'dark' ? '#16161a' : '#ffffff'
+      const theme = getTheme(doc.theme)
+      const bg =
+        theme.engine === 'beautiful' && !fallback
+          ? await beautifulBackground(theme.id as never)
+          : theme.dark
+            ? '#16161a'
+            : '#ffffff'
       await downloadPng(svg, baseName, scale, bg)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'PNG export failed')
@@ -51,6 +63,20 @@ export function Toolbar({ onShowShortcuts }: { onShowShortcuts: () => void }) {
     toast.info((await copyText(doc.source)) ? 'Source copied' : 'Clipboard unavailable')
   const downloadSource = () =>
     downloadBlob(new Blob([doc.source], { type: 'text/plain;charset=utf-8' }), `${baseName}.mmd`)
+  const asciiText = async () => {
+    const { ascii, error } = await renderAscii(doc.source, asciiPlain)
+    if (!ascii) toast.warn(error ?? 'Nothing to render')
+    return ascii
+  }
+  const copyAscii = async () => {
+    const text = await asciiText()
+    if (text) toast.info((await copyText(text)) ? 'ASCII diagram copied' : 'Clipboard unavailable')
+  }
+  const downloadAscii = async () => {
+    const text = await asciiText()
+    if (text)
+      downloadBlob(new Blob([text], { type: 'text/plain;charset=utf-8' }), `${baseName}.txt`)
+  }
 
   return (
     <header className="toolbar" role="banner">
@@ -156,6 +182,24 @@ export function Toolbar({ onShowShortcuts }: { onShowShortcuts: () => void }) {
             >
               Download .mmd
             </MenuItem>
+            <MenuSeparator />
+            <MenuItem
+              onClick={() => {
+                void copyAscii()
+                close()
+              }}
+              testId="copy-ascii"
+            >
+              Copy as ASCII art
+            </MenuItem>
+            <MenuItem
+              onClick={() => {
+                void downloadAscii()
+                close()
+              }}
+            >
+              Download ASCII .txt
+            </MenuItem>
           </>
         )}
       </Menu>
@@ -200,18 +244,27 @@ export function Toolbar({ onShowShortcuts }: { onShowShortcuts: () => void }) {
       </Menu>
 
       <label className="toolbar-field">
-        <span className="visually-hidden">Mermaid theme</span>
+        <span className="visually-hidden">Diagram theme</span>
         <select
-          value={doc.mermaidTheme}
-          onChange={(e) => setMermaidTheme(e.target.value as MermaidTheme)}
-          title="Mermaid theme"
+          value={doc.theme}
+          onChange={(e) => setTheme(e.target.value as ThemeId)}
+          title="Diagram theme"
           data-testid="mermaid-theme"
         >
-          {MERMAID_THEMES.map((t) => (
-            <option key={t} value={t}>
-              Theme: {t}
-            </option>
-          ))}
+          <optgroup label="Beautiful">
+            {themesByEngine('beautiful').map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.label}
+              </option>
+            ))}
+          </optgroup>
+          <optgroup label="Mermaid classic">
+            {themesByEngine('mermaid').map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.label}
+              </option>
+            ))}
+          </optgroup>
         </select>
       </label>
 

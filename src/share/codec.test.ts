@@ -12,7 +12,7 @@ import {
 
 const sample = {
   code: 'flowchart TD\n    A[Ünïcödé] --> B{"quoted"}\n    B --> C\n',
-  mermaidTheme: 'forest' as const,
+  theme: 'forest' as const,
 }
 
 describe('codec', () => {
@@ -38,13 +38,13 @@ describe('codec', () => {
   })
 
   it('compresses repetitive diagrams well below their raw size', async () => {
-    const big = { code: 'A --> B\n'.repeat(500), mermaidTheme: 'default' as const }
+    const big = { code: 'A --> B\n'.repeat(500), theme: 'default' as const }
     const frag = await encodeState(big)
     expect(frag.length).toBeLessThan(big.code.length / 5)
   })
 
   it('round-trips empty code', async () => {
-    const state = { code: '', mermaidTheme: 'default' as const }
+    const state = { code: '', theme: 'default' as const }
     expect(await decodeState(await encodeState(state))).toEqual(state)
   })
 
@@ -52,19 +52,35 @@ describe('codec', () => {
     const wire = JSON.parse(serializeState(sample))
     expect(wire.code).toBe(sample.code)
     expect(JSON.parse(wire.mermaid)).toEqual({ theme: 'forest' })
+    expect(wire.sirenes).toBeUndefined()
+  })
+
+  it('carries beautiful themes in a sirenes field with a Mermaid fallback for mermaid.live', async () => {
+    const wire = JSON.parse(serializeState({ code: 'graph TD', theme: 'tokyo-night' }))
+    expect(JSON.parse(wire.mermaid)).toEqual({ theme: 'dark' })
+    expect(wire.sirenes).toEqual({ theme: 'tokyo-night' })
+    const back = await decodeState(await encodeState({ code: 'graph TD', theme: 'zinc-light' }))
+    expect(back.theme).toBe('zinc-light')
+    // Unknown sirenes theme falls back to the mermaid one.
+    const wireWithBadTheme = JSON.stringify({
+      code: 'x',
+      mermaid: JSON.stringify({ theme: 'forest' }),
+      sirenes: { theme: 'nope' },
+    })
+    expect(deserializeState(wireWithBadTheme).theme).toBe('forest')
   })
 
   it('accepts mermaid config as an object too', () => {
     const state = deserializeState(JSON.stringify({ code: 'graph LR', mermaid: { theme: 'dark' } }))
-    expect(state).toEqual({ code: 'graph LR', mermaidTheme: 'dark' })
+    expect(state).toEqual({ code: 'graph LR', theme: 'dark' })
   })
 
   it('falls back to the default theme for unknown or missing config', () => {
-    expect(deserializeState('{"code":"x","mermaid":"not json"}').mermaidTheme).toBe('default')
-    expect(deserializeState('{"code":"x","mermaid":"{\\"theme\\":\\"nope\\"}"}').mermaidTheme).toBe(
+    expect(deserializeState('{"code":"x","mermaid":"not json"}').theme).toBe('default')
+    expect(deserializeState('{"code":"x","mermaid":"{\\"theme\\":\\"nope\\"}"}').theme).toBe(
       'default',
     )
-    expect(deserializeState('{"code":"x"}').mermaidTheme).toBe('default')
+    expect(deserializeState('{"code":"x"}').theme).toBe('default')
   })
 
   it('decodes a real mermaid.live link', async () => {

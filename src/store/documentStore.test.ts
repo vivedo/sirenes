@@ -21,12 +21,14 @@ describe('documentStore', () => {
     expect(selectIsDirty(useDocumentStore.getState())).toBe(true)
   })
 
-  it('newDocument gets a fresh id and the template by default', () => {
+  it('newDocument gets a fresh id, the template by default, and keeps the current theme', () => {
+    useDocumentStore.getState().setTheme('tokyo-night')
     const before = useDocumentStore.getState().doc.id
     useDocumentStore.getState().newDocument()
     const after = useDocumentStore.getState().doc
     expect(after.id).not.toBe(before)
     expect(after.source).toBe(DEFAULT_TEMPLATE)
+    expect(after.theme).toBe('tokyo-night')
   })
 
   it('resolveConflict can restore the autosave', () => {

@@ -47,6 +47,8 @@ export default defineConfig({
         manualChunks(id: string) {
           if (id.includes('node_modules/@codemirror/') || id.includes('node_modules/@lezer/'))
             return 'codemirror'
+          if (id.includes('node_modules/beautiful-mermaid/') || id.includes('node_modules/elkjs/'))
+            return 'beautiful'
           return undefined
         },
       },

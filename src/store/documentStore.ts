@@ -1,11 +1,12 @@
 import { create } from 'zustand'
-import type { DocumentState, MermaidTheme, RenderResult, UrlStatus } from './types'
+import type { DocumentState, RenderResult, UrlStatus } from './types'
+import { DEFAULT_THEME, type ThemeId } from '../themes/registry'
 import { newId } from '../shared/id'
 import { DEFAULT_TEMPLATE } from '../documents/templates'
 
 export interface NewDocumentOptions {
   source?: string
-  mermaidTheme?: MermaidTheme
+  theme?: ThemeId
   fileName?: string | null
   /** When true the new document is considered saved (e.g. just opened from a file). */
   saved?: boolean
@@ -22,7 +23,7 @@ interface DocumentStore {
   pendingAutosave: DocumentState | null
 
   setSource: (source: string) => void
-  setMermaidTheme: (theme: MermaidTheme) => void
+  setTheme: (theme: ThemeId) => void
   newDocument: (opts?: NewDocumentOptions) => void
   /** Replace the whole document, used by hydration and URL loading. */
   loadDocument: (doc: DocumentState) => void
@@ -39,7 +40,7 @@ export function createBlankDocument(opts: NewDocumentOptions = {}): DocumentStat
   return {
     id: opts.id ?? newId(),
     source,
-    mermaidTheme: opts.mermaidTheme ?? 'default',
+    theme: opts.theme ?? DEFAULT_THEME,
     fileName: opts.fileName ?? null,
     savedSource: opts.saved ? source : null,
   }
@@ -47,14 +48,24 @@ export function createBlankDocument(opts: NewDocumentOptions = {}): DocumentStat
 
 export const useDocumentStore = create<DocumentStore>((set) => ({
   doc: createBlankDocument(),
-  render: { svg: null, error: null, rendering: false },
+  render: {
+    svg: null,
+    ascii: null,
+    asciiError: null,
+    error: null,
+    rendering: false,
+    engine: 'mermaid',
+    fallback: null,
+  },
   urlStatus: 'ok',
   hydrated: false,
   pendingAutosave: null,
 
   setSource: (source) => set((s) => (s.doc.source === source ? s : { doc: { ...s.doc, source } })),
-  setMermaidTheme: (mermaidTheme) => set((s) => ({ doc: { ...s.doc, mermaidTheme } })),
-  newDocument: (opts) => set({ doc: createBlankDocument(opts) }),
+  setTheme: (theme) => set((s) => ({ doc: { ...s.doc, theme } })),
+  // New documents keep the current theme unless one is given explicitly.
+  newDocument: (opts) =>
+    set((s) => ({ doc: createBlankDocument({ theme: s.doc.theme, ...opts }) })),
   loadDocument: (doc) => set({ doc }),
   markSaved: (fileName) =>
     set((s) => ({
