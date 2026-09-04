@@ -27,6 +27,7 @@ _Sirenes_ is the Latin plural of _siren_, the mermaid of classical myth.
 - Export to SVG or PNG (1x, 2x, 4x), copy the SVG or the source.
 - Editor-only, split, and preview-only layouts. Light and dark interface following your system, with a manual toggle.
 - Keyboard shortcuts for everything common. Press `?` to list them.
+- Works on phones: one pane at a time with a Code / Preview switch, a compact toolbar, a full-screen assistant, and pinch-to-zoom in the preview.
 
 ### Themes and rendering
 
@@ -92,7 +93,7 @@ _Sirenes_ is the Latin plural of _siren_, the mermaid of classical myth.
 
 Open [sirenes.vivedo.me](https://sirenes.vivedo.me/) and start typing. For Google Drive on your own deployment, see [docs/GOOGLE_SETUP.md](docs/GOOGLE_SETUP.md).
 
-Browser support: current Chrome, Edge, Firefox and Safari. Save-in-place for local files needs the File System Access API (Chromium); other browsers fall back to downloads. Live collaboration needs WebRTC and a network path between participants; strict NATs may need a TURN server.
+Browser support: current Chrome, Edge, Firefox and Safari, on desktop and on phones. Save-in-place for local files needs the File System Access API (Chromium); other browsers fall back to downloads. Live collaboration needs WebRTC and a network path between participants; strict NATs may need a TURN server.
 
 ## Development
 

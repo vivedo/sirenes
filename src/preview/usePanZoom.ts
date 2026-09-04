@@ -93,9 +93,35 @@ export function usePanZoom() {
         setTransform((t) => ({ ...t, x: t.x - e.deltaX, y: t.y - e.deltaY }))
       }
     }
+    // Touch: track every active pointer so two fingers can pinch-zoom.
+    const pointers = new Map<number, { x: number; y: number }>()
+    let pinch: { dist: number; scale: number } | null = null
+    const distance = () => {
+      const [a, b] = [...pointers.values()]
+      return Math.hypot(a.x - b.x, a.y - b.y)
+    }
+    const midpoint = () => {
+      const [a, b] = [...pointers.values()]
+      const rect = el.getBoundingClientRect()
+      return { x: (a.x + b.x) / 2 - rect.left, y: (a.y + b.y) / 2 - rect.top }
+    }
+
     const onPointerDown = (e: PointerEvent) => {
       if (e.button !== 0) return
-      el.setPointerCapture(e.pointerId)
+      try {
+        el.setPointerCapture(e.pointerId)
+      } catch {
+        /* synthetic events have no active pointer to capture */
+      }
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (pointers.size === 2) {
+        drag.current = null
+        setTransform((t) => {
+          pinch = { dist: distance(), scale: t.scale }
+          return t
+        })
+        return
+      }
       setTransform((t) => {
         drag.current = { startX: e.clientX, startY: e.clientY, originX: t.x, originY: t.y }
         return t
@@ -103,6 +129,18 @@ export function usePanZoom() {
       el.classList.add('dragging')
     }
     const onPointerMove = (e: PointerEvent) => {
+      if (pointers.has(e.pointerId)) pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (pinch && pointers.size === 2) {
+        const p = pinch
+        const factor = distance() / p.dist
+        const m = midpoint()
+        setTransform((t) => {
+          const scale = clampScale(p.scale * factor)
+          const ratio = scale / t.scale
+          return { scale, x: m.x - (m.x - t.x) * ratio, y: m.y - (m.y - t.y) * ratio }
+        })
+        return
+      }
       const d = drag.current
       if (!d) return
       setTransform((t) => ({
@@ -111,7 +149,9 @@ export function usePanZoom() {
         y: d.originY + e.clientY - d.startY,
       }))
     }
-    const onPointerUp = () => {
+    const onPointerUp = (e: PointerEvent) => {
+      pointers.delete(e.pointerId)
+      if (pointers.size < 2) pinch = null
       drag.current = null
       el.classList.remove('dragging')
     }

@@ -23,6 +23,11 @@ import { PrivacyDialog } from '../settings/PrivacyDialog'
 import { WelcomeDialog } from './WelcomeDialog'
 import { hasBeenWelcomed } from './welcome'
 import { readFragment } from '../share/urlState'
+import { useIsMobile } from '../shared/useMediaQuery'
+import { MobileToolbar } from './mobile/MobileToolbar'
+import { MobileNav } from './mobile/MobileNav'
+import { useMobileStore } from './mobile/mobileStore'
+import './mobile/mobile.css'
 import { useCollabStore } from '../collab/collabStore'
 import { JoinBanner } from '../collab/JoinBanner'
 import { LivePanel } from '../collab/LivePanel'
@@ -35,6 +40,8 @@ export function App() {
   const hydrated = useDocumentStore((s) => s.hydrated)
   const aiPanelOpen = useSettingsStore((s) => s.aiPanelOpen)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const isMobile = useIsMobile()
+  const mobilePane = useMobileStore((s) => s.pane)
   const [privacyOpen, setPrivacyOpen] = useState(location.hash === '#privacy')
   // First visit only, and never for people arriving through a live-session link.
   const [welcomeOpen, setWelcomeOpen] = useState(
@@ -101,19 +108,27 @@ export function App() {
 
   return (
     <div className={`app${aiPanelOpen ? ' with-ai' : ''}`}>
-      <Toolbar onShowShortcuts={showShortcuts} />
+      {isMobile ? (
+        <MobileToolbar onShowShortcuts={showShortcuts} onShowPrivacy={() => setPrivacyOpen(true)} />
+      ) : (
+        <Toolbar onShowShortcuts={showShortcuts} />
+      )}
       <DriveBanner />
       <JoinBanner />
       {hydrated && <DiagramTabs />}
       <main className="workspace">
         {hydrated ? (
-          <SplitPane left={<Editor />} right={<Preview />} />
+          <SplitPane
+            left={<Editor />}
+            right={<Preview />}
+            layoutOverride={isMobile ? mobilePane : undefined}
+          />
         ) : (
           <div className="booting" />
         )}
         {aiPanelOpen && <AiPanel />}
       </main>
-      <StatusBar onShowPrivacy={() => setPrivacyOpen(true)} />
+      {isMobile ? <MobileNav /> : <StatusBar onShowPrivacy={() => setPrivacyOpen(true)} />}
       <ShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
       <PrivacyDialog open={privacyOpen} onClose={() => setPrivacyOpen(false)} />
       <WelcomeDialog open={welcomeOpen && hydrated} onClose={() => setWelcomeOpen(false)} />

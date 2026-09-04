@@ -177,6 +177,9 @@ Design in PRD section 6.7. Host/guest star topology over PeerJS data channels, Y
 - [x] **7.8 Shared assistant.** Guest requests are forwarded to the host, executed with the host's key, and the conversation is mirrored back; author names on messages; guests accept/reject proposals through the host; host toggle "Guests can use my AI assistant". [LC-15]
       Done when: e2e shows a guest's prompt answered on the host's key, visible on both sides, applied by the guest, and disabled by the toggle.
 
+- [x] **6.8 Phone layout.** Under 720 px: single pane with a bottom Code/Preview bar, compact toolbar (File, Share, More), AI panel as a full-screen sheet, pinch-to-zoom, 16 px inputs. Desktop untouched (guarded by an e2e test).
+      Done when: the phone e2e spec passes and the desktop guard test proves the desktop toolbar and status bar are unchanged.
+
 ## Dependency notes
 
 - Phase 2 needs 1.2, 1.4, 1.8 (source, render, theme in the store).

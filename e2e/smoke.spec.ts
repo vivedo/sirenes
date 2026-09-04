@@ -300,3 +300,13 @@ test('privacy and terms pages are served as plain readable pages', async ({ page
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Terms of Service')
   await expect(page.locator('body')).toContainText('You own what you create')
 })
+
+test('desktop layout is unchanged by the mobile work', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByTestId('mobile-toolbar')).toHaveCount(0)
+  await expect(page.getByTestId('mobile-nav')).toHaveCount(0)
+  await expect(page.locator('.statusbar')).toBeVisible()
+  await expect(page.getByTestId('layout-split')).toHaveAttribute('aria-checked', 'true')
+  await expect(page.locator('.cm-content')).toBeVisible()
+  await expect(page.locator('.preview-canvas svg')).toBeVisible()
+})

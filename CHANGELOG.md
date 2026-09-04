@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Phone layout: compact toolbar with File, Share and More menus, Code/Preview switch in a bottom bar, full-screen AI sheet, pinch-to-zoom. Desktop layout unchanged.
+
 - Welcome dialog on first visit (skipped for live-session links); static privacy policy and terms pages; favicon redrawn with smooth sine waves.
 
 - Live sessions share the whole file: every diagram, add/rename/remove by guests, presence per diagram, per-diagram undo.

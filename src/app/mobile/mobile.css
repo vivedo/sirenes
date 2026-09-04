@@ -1,0 +1,201 @@
+/* Everything in this file applies to phone-sized viewports only. */
+@media (max-width: 720px) {
+  .app {
+    /* toolbar, banners x2, tabs, workspace, bottom nav */
+    grid-template-rows: auto auto auto auto 1fr auto;
+  }
+
+  .mobile-toolbar {
+    flex-wrap: nowrap;
+    gap: 2px;
+    padding: 6px 8px;
+  }
+
+  .mobile-toolbar .brand-mark {
+    margin-right: 4px;
+    flex: none;
+  }
+
+  .mobile-toolbar .menu > button {
+    padding: 4px 6px;
+  }
+
+  .mobile-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--fg-muted);
+    font-size: 13px;
+  }
+
+  .mobile-toolbar .toolbar-title {
+    max-width: 38vw;
+  }
+
+  .mobile-toolbar .files-count {
+    display: none;
+  }
+
+  .menu-list {
+    max-width: calc(100vw - 16px);
+    min-width: 240px;
+  }
+
+  .menu-field {
+    padding: 6px 8px;
+  }
+
+  .menu-field label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 13px;
+  }
+
+  .menu-field select {
+    max-width: 60%;
+  }
+
+  /* Single pane: the split divider is never shown. */
+  .split-divider {
+    display: none;
+  }
+
+  /* Bottom navigation replaces the status bar. */
+  .mobile-nav {
+    grid-row: 6;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+    background: var(--bg-elevated);
+    border-top: 1px solid var(--border);
+  }
+
+  .mobile-nav-panes button {
+    min-height: 32px;
+    padding: 4px 12px;
+    position: relative;
+  }
+
+  .mobile-error-dot {
+    position: absolute;
+    top: 4px;
+    right: 6px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--danger);
+  }
+
+  .mobile-status {
+    flex: 1;
+    min-width: 0;
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mobile-status.ok {
+    color: var(--ok);
+  }
+
+  .mobile-status.error {
+    color: var(--danger);
+  }
+
+  .mobile-ai {
+    min-height: 32px;
+    border: 1px solid var(--border);
+  }
+
+  .mobile-ai.active {
+    background: var(--selection);
+    color: var(--accent-text);
+  }
+
+  /* The AI panel becomes a full-screen sheet over the workspace. */
+  .ai-panel {
+    /* !important: the desktop stylesheet may come later in the bundle and sets position/width. */
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 40;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    border-left: none;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .ai-panel-resizer {
+    display: none;
+  }
+
+  /* Popovers anchored to the toolbar stretch across the screen. */
+  .save-panel,
+  .live-panel {
+    left: 8px;
+    right: 8px;
+    width: auto;
+  }
+
+  .live-link code {
+    font-size: 10px;
+  }
+
+  /* Preview controls are a little tighter; the zoom label goes. */
+  .preview-controls {
+    gap: 0;
+  }
+
+  .preview-zoom {
+    display: none;
+  }
+
+  .preview-fallback {
+    max-width: calc(100% - 24px);
+  }
+
+  .preview-error {
+    font-size: 11px;
+  }
+
+  /* Toasts sit above the bottom bar. */
+  .toasts {
+    bottom: calc(60px + env(safe-area-inset-bottom));
+    left: 12px;
+    right: 12px;
+  }
+
+  .toast {
+    max-width: none;
+  }
+
+  /* iOS zooms into inputs smaller than 16px; keep them at 16px on phones. */
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+
+  .diagram-tab-input {
+    font-size: 16px;
+  }
+
+  dialog {
+    padding: 16px;
+  }
+
+  .diff-dialog {
+    width: 96vw;
+  }
+
+  .diff-legend {
+    display: none;
+  }
+}

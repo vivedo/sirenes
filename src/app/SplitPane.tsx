@@ -1,8 +1,19 @@
 import { useCallback, useRef, type ReactNode } from 'react'
 import { useSettingsStore } from '../store/settingsStore'
+import type { Layout } from '../store/types'
 
-export function SplitPane({ left, right }: { left: ReactNode; right: ReactNode }) {
-  const layout = useSettingsStore((s) => s.layout)
+export function SplitPane({
+  left,
+  right,
+  layoutOverride,
+}: {
+  left: ReactNode
+  right: ReactNode
+  /** Phones show one pane at a time regardless of the persisted desktop layout. */
+  layoutOverride?: Layout
+}) {
+  const storedLayout = useSettingsStore((s) => s.layout)
+  const layout = layoutOverride ?? storedLayout
   const ratio = useSettingsStore((s) => s.splitRatio)
   const setRatio = useSettingsStore((s) => s.setSplitRatio)
   const root = useRef<HTMLDivElement>(null)
