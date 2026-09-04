@@ -15,6 +15,8 @@ import { copyShareLink } from '../share/shareLinks'
 import { modKey } from '../shared/platform'
 import { resolveUiTheme } from '../settings/uiTheme'
 import { documentBaseName } from '../documents/naming'
+import { FileMenu } from './FileMenu'
+import { confirmDiscard } from '../documents/actions'
 
 export function Toolbar({ onShowShortcuts }: { onShowShortcuts: () => void }) {
   const doc = useDocumentStore((s) => s.doc)
@@ -38,7 +40,7 @@ export function Toolbar({ onShowShortcuts }: { onShowShortcuts: () => void }) {
   const resolvedTheme = resolveUiTheme(uiTheme)
 
   const startNew = (source?: string) => {
-    if (dirty && !window.confirm('Discard the current diagram and start a new one?')) return
+    if (!confirmDiscard()) return
     newDocument({ source })
   }
 
@@ -62,8 +64,6 @@ export function Toolbar({ onShowShortcuts }: { onShowShortcuts: () => void }) {
     svg && toast.info((await copyText(standaloneSvg(svg))) ? 'SVG copied' : 'Clipboard unavailable')
   const copySource = async () =>
     toast.info((await copyText(doc.source)) ? 'Source copied' : 'Clipboard unavailable')
-  const downloadSource = () =>
-    downloadBlob(new Blob([doc.source], { type: 'text/plain;charset=utf-8' }), `${baseName}.mmd`)
   const asciiText = async () => {
     const { ascii, error } = await renderAscii(doc.source, asciiPlain)
     if (!ascii) toast.warn(error ?? 'Nothing to render')
@@ -85,7 +85,7 @@ export function Toolbar({ onShowShortcuts }: { onShowShortcuts: () => void }) {
         <span className="brand-mark" aria-hidden="true">
           ~
         </span>
-        Sirenes
+        Sirēnēs
       </div>
 
       <Menu label="New" icon="file" testId="menu-new">
@@ -116,6 +116,8 @@ export function Toolbar({ onShowShortcuts }: { onShowShortcuts: () => void }) {
           </>
         )}
       </Menu>
+
+      <FileMenu />
 
       <Menu label="Export" icon="download" testId="menu-export">
         {(close) => (
@@ -173,15 +175,6 @@ export function Toolbar({ onShowShortcuts }: { onShowShortcuts: () => void }) {
               }}
             >
               Copy source
-            </MenuItem>
-            <MenuItem
-              onClick={() => {
-                downloadSource()
-                close()
-              }}
-              hint={`${modKey} S`}
-            >
-              Download .mmd
             </MenuItem>
             <MenuSeparator />
             <MenuItem
@@ -301,7 +294,9 @@ export function Toolbar({ onShowShortcuts }: { onShowShortcuts: () => void }) {
         ))}
       </div>
 
-      <div className="toolbar-title" aria-live="polite">
+      <div className="toolbar-title" aria-live="polite" data-testid="toolbar-title">
+        {doc.origin?.kind === 'drive' && <Icon name="cloud" size={14} />}
+        {doc.origin?.kind === 'local' && <Icon name="file" size={14} />}
         {doc.fileName ?? 'Untitled'}
         {dirty && <span title="Unsaved changes"> •</span>}
       </div>

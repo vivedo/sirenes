@@ -1,4 +1,5 @@
 import type { ThemeId } from '../themes/registry'
+import type { DocumentOrigin, MarkdownWrapper } from '../storage/types'
 
 export const MERMAID_THEMES = ['default', 'dark', 'forest', 'neutral', 'base'] as const
 export type MermaidTheme = (typeof MERMAID_THEMES)[number]
@@ -38,6 +39,10 @@ export interface DocumentState {
   fileName: string | null
   /** Source at the time of the last save to a file or Drive. null when never saved. */
   savedSource: string | null
+  /** Where Save writes. null for documents that never touched a file. */
+  origin: DocumentOrigin | null
+  /** Set when the document was opened from a Markdown file. */
+  markdown: MarkdownWrapper | null
 }
 
 export interface ShareState {

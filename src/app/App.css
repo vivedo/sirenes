@@ -40,6 +40,9 @@
 }
 
 .toolbar-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   color: var(--fg-muted);
   margin-left: 8px;
   white-space: nowrap;
@@ -289,4 +292,24 @@
   .toolbar-title {
     display: none;
   }
+}
+
+.dropzone {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(15, 111, 214, 0.12);
+  border: 3px dashed var(--accent);
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.dropzone-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  padding: 16px 24px;
+  font-weight: 600;
 }

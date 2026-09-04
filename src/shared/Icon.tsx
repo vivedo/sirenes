@@ -18,6 +18,8 @@ const PATHS = {
   chevron: 'M6 9l6 6 6-6',
   close: 'M6 6l12 12M18 6L6 18',
   check: 'M5 12l5 5L20 7',
+  cloud: 'M7 18a4 4 0 01-.5-8 5.5 5.5 0 0110.7-1.5A4 4 0 0117 18H7z',
+  save: 'M5 4h11l3 3v13H5zM8 4v5h7V4M8 20v-6h8v6',
 } as const
 
 export type IconName = keyof typeof PATHS

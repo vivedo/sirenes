@@ -27,6 +27,7 @@ See [docs/PRD.md](docs/PRD.md) for requirements and [docs/TASKS.md](docs/TASKS.m
 - Templates for flowchart, sequence, class, state, ER, Gantt, pie, mind map, timeline and git graph.
 - The diagram lives in the URL fragment as zlib-deflated base64url (`#pako:…`), the same format as mermaid.live, so links open in either tool. View-only links open in preview mode.
 - Autosave to IndexedDB. If a link and your unsaved work disagree, you choose which to keep.
+- Local files: open `.mmd`, `.mermaid`, `.txt` or `.md` from disk or by dragging them onto the window. In Chromium browsers Save writes back to the same file through the File System Access API; elsewhere Save downloads. Markdown files round-trip: only the first ```mermaid block is edited, the rest of the file is untouched. Recent files list.
 - Keyboard shortcuts. Press `?` to see them.
 - AI assistant: paste your own OpenRouter key (stored in this browser only), pick any OpenRouter model, and ask for changes in plain language. Replies stream in, the proposed diagram is parsed before it is offered, and you review it as a side-by-side diff before accepting. Accept is a single undo step. Presets for fix, explain, simplify, tidy and convert. Token and cost usage per reply.
 

@@ -62,6 +62,8 @@ export function useUrlSync() {
           theme: state.theme,
           fileName: null,
           savedSource: null,
+          origin: null,
+          markdown: null,
         })
         if (state.view === 'preview') useSettingsStore.getState().setLayout('preview')
       } catch {

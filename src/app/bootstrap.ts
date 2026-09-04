@@ -31,6 +31,8 @@ export function decideInitialDocument(
       theme: fromUrl.theme,
       fileName: null,
       savedSource: null,
+      origin: null,
+      markdown: null,
     }
     const autosaveDiffers =
       fromAutosave !== null &&

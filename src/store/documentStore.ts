@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { DocumentState, RenderResult, UrlStatus } from './types'
 import { DEFAULT_THEME, type ThemeId } from '../themes/registry'
+import type { DocumentOrigin, MarkdownWrapper } from '../storage/types'
 import { newId } from '../shared/id'
 import { DEFAULT_TEMPLATE } from '../documents/templates'
 
@@ -11,6 +12,8 @@ export interface NewDocumentOptions {
   /** When true the new document is considered saved (e.g. just opened from a file). */
   saved?: boolean
   id?: string
+  origin?: DocumentOrigin | null
+  markdown?: MarkdownWrapper | null
 }
 
 interface DocumentStore {
@@ -27,7 +30,7 @@ interface DocumentStore {
   newDocument: (opts?: NewDocumentOptions) => void
   /** Replace the whole document, used by hydration and URL loading. */
   loadDocument: (doc: DocumentState) => void
-  markSaved: (fileName?: string | null) => void
+  markSaved: (fileName?: string | null, origin?: DocumentOrigin | null) => void
   setRenderResult: (result: Partial<RenderResult>) => void
   setUrlStatus: (status: UrlStatus) => void
   setHydrated: () => void
@@ -43,6 +46,8 @@ export function createBlankDocument(opts: NewDocumentOptions = {}): DocumentStat
     theme: opts.theme ?? DEFAULT_THEME,
     fileName: opts.fileName ?? null,
     savedSource: opts.saved ? source : null,
+    origin: opts.origin ?? null,
+    markdown: opts.markdown ?? null,
   }
 }
 
@@ -67,12 +72,13 @@ export const useDocumentStore = create<DocumentStore>((set) => ({
   newDocument: (opts) =>
     set((s) => ({ doc: createBlankDocument({ theme: s.doc.theme, ...opts }) })),
   loadDocument: (doc) => set({ doc }),
-  markSaved: (fileName) =>
+  markSaved: (fileName, origin) =>
     set((s) => ({
       doc: {
         ...s.doc,
         savedSource: s.doc.source,
         fileName: fileName === undefined ? s.doc.fileName : fileName,
+        origin: origin === undefined ? s.doc.origin : origin,
       },
     })),
   setRenderResult: (result) => set((s) => ({ render: { ...s.render, ...result } })),

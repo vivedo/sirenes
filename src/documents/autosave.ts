@@ -15,6 +15,9 @@ export async function readAutosave(): Promise<AutosaveRecord | null> {
   try {
     const rec = await get<AutosaveRecord>(AUTOSAVE_KEY)
     if (!rec || typeof rec.doc?.source !== 'string') return null
+    // Records written before origin/markdown existed.
+    rec.doc.origin ??= null
+    rec.doc.markdown ??= null
     return rec
   } catch {
     return null

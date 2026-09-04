@@ -9,6 +9,8 @@ const autosave: DocumentState = {
   theme: 'dark',
   fileName: 'work.mmd',
   savedSource: null,
+  origin: null,
+  markdown: null,
 }
 
 describe('decideInitialDocument', () => {

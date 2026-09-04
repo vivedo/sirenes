@@ -15,6 +15,7 @@ import { useAiStore } from '../ai/aiStore'
 import { ShortcutsDialog } from './ShortcutsDialog'
 import { ConflictDialog } from './ConflictDialog'
 import { Toasts } from './Toasts'
+import { DropZone } from './DropZone'
 import { useKeyboardShortcuts } from './useKeyboardShortcuts'
 import './App.css'
 
@@ -78,6 +79,7 @@ export function App() {
       <ShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
       <ConflictDialog />
       <Toasts />
+      <DropZone />
     </div>
   )
 }

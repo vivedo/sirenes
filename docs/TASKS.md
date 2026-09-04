@@ -4,7 +4,7 @@ Ordered backlog derived from [PRD.md](./PRD.md). Phases run in priority order. R
 
 Priority order: UI → URL state → AI → local files → Google Drive → polish.
 
-**Status (2026-09-04):** Phases 0 to 3 implemented. Next up: Phase 4, local file editing.
+**Status (2026-09-04):** Phases 0 to 4 implemented. Next up: Phase 5, Google Drive.
 
 ---
 
@@ -98,19 +98,19 @@ Priority order: UI → URL state → AI → local files → Google Drive → pol
 
 ## Phase 4 — Local file editing
 
-- [ ] **4.1 StorageProvider interface.** `src/storage/types.ts` with `open`, `save`, `saveAs`, optional `checkConflict`. Document store tracks `source`, `provider`, `handle`, `dirty`. [FS-5]
+- [x] **4.1 StorageProvider interface.** `src/storage/types.ts` with `open`, `save`, `saveAs`, optional `checkConflict`. Document store tracks `source`, `provider`, `handle`, `dirty`. [FS-5]
       Done when: interface is typed and a fake provider passes the contract test.
-- [ ] **4.2 File System Access provider.** `showOpenFilePicker` / `showSaveFilePicker` with `.mmd`, `.mermaid`, `.md` types; write via `createWritable`. Persist handle in IndexedDB and re-request permission on boot. [FS-1, FS-2]
+- [x] **4.2 File System Access provider.** `showOpenFilePicker` / `showSaveFilePicker` with `.mmd`, `.mermaid`, `.md` types; write via `createWritable`. Persist handle in IndexedDB and re-request permission on boot. [FS-1, FS-2]
       Done when: open, edit, Cmd/Ctrl+S overwrites the same file in Chrome without a prompt.
-- [ ] **4.3 Fallback provider.** `<input type="file">` for open, `Blob` + `<a download>` for save. Auto-selected when the FSA API is absent. [FS-2]
+- [x] **4.3 Fallback provider.** `<input type="file">` for open, `Blob` + `<a download>` for save. Auto-selected when the FSA API is absent. [FS-2]
       Done when: open/save works in Firefox and Safari.
-- [ ] **4.4 Drag and drop.** Whole-window drop zone with overlay; opens the dropped file via the fallback path. [FS-3]
+- [x] **4.4 Drag and drop.** Whole-window drop zone with overlay; opens the dropped file via the fallback path. [FS-3]
       Done when: dropping a `.mmd` file loads it.
-- [ ] **4.5 Title and dirty state.** Tab title `<filename>• — Sirenes` when dirty; toolbar shows file name and provider icon. [FS-5]
+- [x] **4.5 Title and dirty state.** Tab title `<filename>• — Sirenes` when dirty; toolbar shows file name and provider icon. [FS-5]
       Done when: title updates on edit and on save.
-- [ ] **4.6 Markdown round-trip.** On `.md` open, extract first ` ```mermaid ` block; on save, splice it back and preserve the rest byte-for-byte. Multiple blocks: pick first, warn. [FS-4]
+- [x] **4.6 Markdown round-trip.** On `.md` open, extract first ` ```mermaid ` block; on save, splice it back and preserve the rest byte-for-byte. Multiple blocks: pick first, warn. [FS-4]
       Done when: a fixture README round-trips with only the block changed.
-- [ ] **4.7 Recent files.** List of persisted local handles and Drive ids in the "Open" menu. [FS-6]
+- [x] **4.7 Recent files.** List of persisted local handles (Drive ids added in 5.7) in the File menu. [FS-6]
       Done when: a recently opened local file reopens from the menu.
 
 ## Phase 5 — Google Drive integration

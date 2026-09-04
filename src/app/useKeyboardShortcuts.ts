@@ -1,11 +1,10 @@
 import { useEffect } from 'react'
-import { useDocumentStore, selectIsDirty } from '../store/documentStore'
+import { useDocumentStore } from '../store/documentStore'
 import { useSettingsStore } from '../store/settingsStore'
 import { formatMermaid } from '../documents/format'
 import { applySourceEdit } from '../editor/applySourceEdit'
-import { downloadBlob } from '../shared/download'
 import { copyShareLink } from '../share/shareLinks'
-import { documentBaseName } from '../documents/naming'
+import { confirmDiscard, openFile, saveDocument, saveDocumentAs } from '../documents/actions'
 
 export function useKeyboardShortcuts(onShowShortcuts: () => void) {
   useEffect(() => {
@@ -27,18 +26,16 @@ export function useKeyboardShortcuts(onShowShortcuts: () => void) {
 
       if (key === 's' && !e.shiftKey) {
         e.preventDefault()
-        const name = documentBaseName(store.doc.fileName)
-        downloadBlob(
-          new Blob([store.doc.source], { type: 'text/plain;charset=utf-8' }),
-          `${name}.mmd`,
-        )
+        void saveDocument()
+      } else if (key === 's' && e.shiftKey) {
+        e.preventDefault()
+        void saveDocumentAs()
+      } else if (key === 'o' && !e.shiftKey) {
+        e.preventDefault()
+        void openFile()
       } else if (key === 'n' && !e.shiftKey) {
         e.preventDefault()
-        if (
-          selectIsDirty(store) &&
-          !window.confirm('Discard the current diagram and start a new one?')
-        )
-          return
+        if (!confirmDiscard()) return
         store.newDocument({ source: '' })
       } else if (key === 'a' && e.shiftKey) {
         e.preventDefault()
